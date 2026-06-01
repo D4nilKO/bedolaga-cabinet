@@ -1,75 +1,91 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import packageJson from './package.json';
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  define: {
-    __APP_VERSION__: JSON.stringify(packageJson.version),
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const proxyTarget = env.PROXY_TARGET || 'http://localhost:8080';
+  const isRemote = Boolean(env.PROXY_TARGET);
+  const androidTvProxyTarget = env.ANDROID_TV_BOT_API_URL || 'http://localhost:8090';
+
+  return {
+    plugins: [react()],
+    define: {
+      __APP_VERSION__: JSON.stringify(packageJson.version),
     },
-  },
-  // Base path - use '/' for standalone Docker deployment
-  // Change to '/cabinet/' if serving from a sub-path
-  base: '/',
-  server: {
-    port: 5173,
-    host: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        // Strip /api prefix: /api/cabinet/auth -> /cabinet/auth
-        rewrite: (path) => path.replace(/^\/api/, ''),
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'src'),
       },
     },
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: false,
-    chunkSizeWarningLimit: 550,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return;
-          if (
-            id.includes('react-dom') ||
-            id.includes('react-router') ||
-            id.includes('node_modules/react/')
-          )
-            return 'vendor-react';
-          if (id.includes('@tanstack/react-query')) return 'vendor-query';
-          if (id.includes('@tanstack/react-table')) return 'vendor-table';
-          if (id.includes('i18next') || id.includes('react-i18next')) return 'vendor-i18n';
-          if (id.includes('framer-motion')) return 'vendor-motion';
-          if (id.includes('@radix-ui/')) return 'vendor-radix';
-          if (id.includes('@dnd-kit/')) return 'vendor-dnd';
-          if (id.includes('@telegram-apps/') || id.includes('/@tma.js/')) return 'vendor-telegram';
-          if (id.includes('/ogl/')) return 'vendor-webgl';
-          if (id.includes('/cmdk/')) return 'vendor-cmdk';
-          if (id.includes('twemoji') || id.includes('@twemoji/')) return 'vendor-twemoji';
-          if (id.includes('/jsencrypt/') || id.includes('@kastov/')) return 'vendor-crypto';
-          if (id.includes('@lottiefiles/')) return 'vendor-lottie';
-          // Heavy admin-only deps — split so they don't bloat the shared
-          // chunks of other lazy admin pages that don't use them.
-          if (id.includes('/recharts/') || id.includes('/d3-')) return 'vendor-recharts';
-          if (id.includes('@tiptap/') || id.includes('/prosemirror-')) return 'vendor-tiptap';
-          if (
-            id.includes('/axios/') ||
-            id.includes('/zustand/') ||
-            id.includes('/clsx/') ||
-            id.includes('/tailwind-merge/') ||
-            id.includes('class-variance-authority') ||
-            id.includes('/dompurify/')
-          )
-            return 'vendor-utils';
+    // Base path - use '/' for standalone Docker deployment
+    // Change to '/cabinet/' if serving from a sub-path
+    base: '/',
+    server: {
+      port: 5173,
+      host: true,
+      proxy: {
+        '/api': {
+          // Set PROXY_TARGET in .env to point at a remote backend for local dev,
+          // e.g. PROXY_TARGET=https://cabinet-9f3k.tagtagcore.com
+          // When PROXY_TARGET is set the /api prefix is kept (remote nginx handles it).
+          // When not set, requests go to local backend on :8080 with /api stripped.
+          target: proxyTarget,
+          changeOrigin: true,
+          rewrite: isRemote ? undefined : (path) => path.replace(/^\/api/, ''),
+        },
+        '/android-tv-api': {
+          target: androidTvProxyTarget,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/android-tv-api/, ''),
         },
       },
     },
-  },
+    build: {
+      outDir: 'dist',
+      sourcemap: false,
+      chunkSizeWarningLimit: 550,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return;
+            if (
+              id.includes('react-dom') ||
+              id.includes('react-router') ||
+              id.includes('node_modules/react/')
+            )
+              return 'vendor-react';
+            if (id.includes('@tanstack/react-query')) return 'vendor-query';
+            if (id.includes('@tanstack/react-table')) return 'vendor-table';
+            if (id.includes('i18next') || id.includes('react-i18next')) return 'vendor-i18n';
+            if (id.includes('framer-motion')) return 'vendor-motion';
+            if (id.includes('@radix-ui/')) return 'vendor-radix';
+            if (id.includes('@dnd-kit/')) return 'vendor-dnd';
+            if (id.includes('@telegram-apps/') || id.includes('/@tma.js/'))
+              return 'vendor-telegram';
+            if (id.includes('/ogl/')) return 'vendor-webgl';
+            if (id.includes('/cmdk/')) return 'vendor-cmdk';
+            if (id.includes('twemoji') || id.includes('@twemoji/')) return 'vendor-twemoji';
+            if (id.includes('/jsencrypt/') || id.includes('@kastov/')) return 'vendor-crypto';
+            if (id.includes('@lottiefiles/')) return 'vendor-lottie';
+            // Heavy admin-only deps — split so they don't bloat the shared
+            // chunks of other lazy admin pages that don't use them.
+            if (id.includes('/recharts/') || id.includes('/d3-')) return 'vendor-recharts';
+            if (id.includes('@tiptap/') || id.includes('/prosemirror-')) return 'vendor-tiptap';
+            if (
+              id.includes('/axios/') ||
+              id.includes('/zustand/') ||
+              id.includes('/clsx/') ||
+              id.includes('/tailwind-merge/') ||
+              id.includes('class-variance-authority') ||
+              id.includes('/dompurify/')
+            )
+              return 'vendor-utils';
+          },
+        },
+      },
+    },
+  };
 });

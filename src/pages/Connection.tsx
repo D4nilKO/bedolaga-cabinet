@@ -223,12 +223,46 @@ export default function Connection() {
   }
 
   return (
-    <InstallationGuide
-      appConfig={appConfig}
-      onOpenDeepLink={openDeepLink}
-      isTelegramWebApp={isTelegramWebApp}
-      onGoBack={handleGoBack}
-      onOpenQR={handleOpenQR}
-    />
+    <>
+      <InstallationGuide
+        appConfig={appConfig}
+        onOpenDeepLink={openDeepLink}
+        isTelegramWebApp={isTelegramWebApp}
+        onGoBack={handleGoBack}
+        onOpenQR={handleOpenQR}
+      />
+      <div className="mt-4 px-4 pb-4">
+        <Link
+          to={subId ? `/android-tv?sub=${subId}` : '/android-tv'}
+          className="flex items-center justify-between rounded-2xl border border-dark-700/50 bg-dark-800/50 px-4 py-3.5 text-sm text-dark-300 transition-all hover:border-dark-600/50 hover:bg-dark-700/50 hover:text-dark-100"
+        >
+          <span className="flex items-center gap-2.5">
+            <svg
+              className="h-5 w-5 shrink-0 text-dark-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z"
+              />
+            </svg>
+            Подключить Android TV приставку
+          </span>
+          <svg
+            className="h-4 w-4 shrink-0 text-dark-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </Link>
+      </div>
+    </>
   );
 }
