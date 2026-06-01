@@ -104,6 +104,21 @@ function GuideStep({ n, text }: { n: number; text: string }) {
   );
 }
 
+function ReviewBonusUsedNotice() {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-warning-500/20 bg-warning-500/10 p-5">
+      <ExclamationIcon />
+      <div>
+        <p className="text-sm font-semibold text-warning-400">Бонус за отзыв уже использован</p>
+        <p className="mt-1 text-sm text-dark-400">
+          Повторный скриншот отправлять не нужно. Если профиль не появился на приставке, подключите
+          устройство ещё раз или обратитесь в поддержку.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 interface AndroidTvWizardProps {
   subscriptionId?: number;
   standalone?: boolean;
@@ -158,6 +173,7 @@ export function AndroidTvWizard({
   });
 
   const subscriptionLink = linkData ? resolveSubscriptionLink(linkData) : null;
+  const reviewBonusUsed = reviewStatus?.bonus_used ?? false;
   const canUploadReview = reviewStatus?.can_upload_review ?? true;
   const isDisabledReview = reviewStatus?.subscription_status === 'disabled';
 
@@ -336,6 +352,8 @@ export function AndroidTvWizard({
         </div>
       )}
 
+      {reviewBonusUsed && !isDisabledReview && phase !== 'bonus_used' && <ReviewBonusUsedNotice />}
+
       {(phase === 'idle' || phase === 'error') && (
         <div className="rounded-2xl border border-dark-700/50 bg-dark-800/50 p-5">
           <p className="mb-4 text-sm font-semibold uppercase tracking-wider text-dark-400">
@@ -429,18 +447,7 @@ export function AndroidTvWizard({
         </div>
       )}
 
-      {phase === 'bonus_used' && !isDisabledReview && (
-        <div className="flex items-start gap-3 rounded-2xl border border-warning-500/20 bg-warning-500/10 p-5">
-          <ExclamationIcon />
-          <div>
-            <p className="text-sm font-semibold text-warning-400">Бонус за отзыв уже использован</p>
-            <p className="mt-1 text-sm text-dark-400">
-              Повторный скриншот отправлять не нужно. Если профиль не появился на приставке,
-              подключите устройство ещё раз или обратитесь в поддержку.
-            </p>
-          </div>
-        </div>
-      )}
+      {phase === 'bonus_used' && !isDisabledReview && <ReviewBonusUsedNotice />}
 
       {phase === 'screenshot' && canUploadReview && (
         <div className="space-y-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-5">
