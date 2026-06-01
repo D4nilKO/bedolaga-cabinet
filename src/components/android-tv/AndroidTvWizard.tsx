@@ -7,10 +7,13 @@ import { Button } from '@/components/primitives/Button';
 type Phase =
   | 'idle'
   | 'loading'
-  | 'success'
+  | 'confirm'
+  | 'retry_loading'
   | 'screenshot'
   | 'screenshot_loading'
   | 'bonus_success'
+  | 'bonus_used'
+  | 'repeat_sent'
   | 'error';
 
 function TvIcon() {
@@ -133,6 +136,13 @@ export function AndroidTvWizard({
     staleTime: 60_000,
   });
 
+  const { data: reviewStatus, refetch: refetchReviewStatus } = useQuery({
+    queryKey: ['android-tv-review-status', subscriptionId],
+    queryFn: () => androidTvApi.getReviewStatus(subscriptionId),
+    retry: false,
+    staleTime: 30_000,
+  });
+
   const activateTrial = useMutation({
     mutationFn: () => subscriptionApi.activateTrial(),
     onSuccess: async () => {
@@ -148,6 +158,8 @@ export function AndroidTvWizard({
   });
 
   const subscriptionLink = linkData ? resolveSubscriptionLink(linkData) : null;
+  const canUploadReview = reviewStatus?.can_upload_review ?? true;
+  const isDisabledReview = reviewStatus?.subscription_status === 'disabled';
 
   const handleCodeChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
@@ -172,7 +184,7 @@ export function AndroidTvWizard({
         const result = await sendTvCode(trimmed, subscriptionId);
 
         if (result.success) {
-          setPhase('success');
+          setPhase('confirm');
           return;
         }
 
@@ -202,6 +214,45 @@ export function AndroidTvWizard({
     setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
 
+  const handleConfirmYes = useCallback(() => {
+    setErrorMsg('');
+    if (canUploadReview) {
+      setPhase('screenshot');
+      return;
+    }
+    setPhase('bonus_used');
+  }, [canUploadReview]);
+
+  const handleConfirmNo = useCallback(async () => {
+    const trimmed = code.trim().toUpperCase();
+    if (!validateTvCode(trimmed)) {
+      setErrorMsg('Перезапустите HAPP на приставке и введите новый код с экрана.');
+      setPhase('error');
+      return;
+    }
+
+    setPhase('retry_loading');
+    setErrorMsg('');
+    try {
+      const result = await sendTvCode(trimmed, subscriptionId, true);
+      if (result.success) {
+        setPhase('confirm');
+        return;
+      }
+
+      setErrorMsg(
+        result.errorMessage ||
+          'Похожих вариантов кода больше нет. Перезапустите HAPP и введите новый код.',
+      );
+      setPhase('error');
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data
+        ?.detail;
+      setErrorMsg(detail || 'Не удалось попробовать похожие варианты кода.');
+      setPhase('error');
+    }
+  }, [code, subscriptionId]);
+
   const handleScreenshotSubmit = useCallback(async () => {
     if (!selectedFile) {
       setErrorMsg('Выберите изображение со скриншотом отзыва.');
@@ -213,21 +264,27 @@ export function AndroidTvWizard({
     setErrorMsg('');
 
     try {
-      await submitReviewScreenshot(selectedFile, subscriptionId);
+      const result = await submitReviewScreenshot(selectedFile, subscriptionId);
+      await refetchReviewStatus();
+      if (result.review_status === 'repeat_sent') {
+        setPhase('repeat_sent');
+        return;
+      }
       setPhase('bonus_success');
-      onDone?.();
     } catch (error: unknown) {
       const status = (error as { response?: { status?: number } }).response?.status;
       const detail = (error as { response?: { data?: { detail?: string } } }).response?.data
         ?.detail;
       if (status === 409) {
         setErrorMsg('Бонус за отзыв уже был использован ранее.');
+        setPhase('bonus_used');
+        return;
       } else {
         setErrorMsg(detail || 'Не удалось загрузить скриншот. Попробуйте ещё раз.');
       }
       setPhase('screenshot');
     }
-  }, [onDone, selectedFile, subscriptionId]);
+  }, [refetchReviewStatus, selectedFile, subscriptionId]);
 
   return (
     <div className="space-y-4">
@@ -328,7 +385,16 @@ export function AndroidTvWizard({
         </div>
       )}
 
-      {phase === 'success' && (
+      {phase === 'retry_loading' && (
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-8">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-dark-600 border-t-accent-500" />
+          <p className="text-center text-sm text-dark-400">
+            Пробуем похожие варианты кода из-за символов 0/O, 1/I/L, 5/S, 2/Z, 8/B...
+          </p>
+        </div>
+      )}
+
+      {phase === 'confirm' && (
         <div className="space-y-4">
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-success-500/20 bg-success-500/10 p-8">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-500/20 text-success-400">
@@ -339,23 +405,20 @@ export function AndroidTvWizard({
               <p className="mt-1 text-sm text-dark-400">
                 Подписка должна активироваться на приставке в течение минуты.
                 <br />
-                Если ничего не произошло, нажмите кнопку обновления в HAPP.
+                Нажмите кнопку обновления в HAPP и проверьте, появился ли профиль.
               </p>
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={() => setPhase('screenshot')}
-          >
-            Получить +23 дня за отзыв
+          <Button type="button" variant="primary" size="lg" fullWidth onClick={handleConfirmYes}>
+            Да, профиль появился
+          </Button>
+          <Button type="button" variant="secondary" size="lg" fullWidth onClick={handleConfirmNo}>
+            Нет, попробовать похожий код
           </Button>
           <Button
             type="button"
-            variant="secondary"
+            variant="ghost"
             size="lg"
             fullWidth
             leftIcon={<ArrowPathIcon />}
@@ -366,12 +429,29 @@ export function AndroidTvWizard({
         </div>
       )}
 
-      {phase === 'screenshot' && (
+      {phase === 'bonus_used' && !isDisabledReview && (
+        <div className="flex items-start gap-3 rounded-2xl border border-warning-500/20 bg-warning-500/10 p-5">
+          <ExclamationIcon />
+          <div>
+            <p className="text-sm font-semibold text-warning-400">Бонус за отзыв уже использован</p>
+            <p className="mt-1 text-sm text-dark-400">
+              Повторный скриншот отправлять не нужно. Если профиль не появился на приставке,
+              подключите устройство ещё раз или обратитесь в поддержку.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {phase === 'screenshot' && canUploadReview && (
         <div className="space-y-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-5">
           <div>
-            <p className="text-base font-semibold text-dark-100">Бонус за отзыв</p>
+            <p className="text-base font-semibold text-dark-100">
+              {isDisabledReview ? 'Повторная проверка отзыва' : 'Бонус за отзыв'}
+            </p>
             <p className="mt-1 text-sm text-dark-400">
-              Загрузите скриншот HAPP на телевизоре для получения +23 дней бесплатно.
+              {isDisabledReview
+                ? 'Подписка отключена после отклонения скриншота. Загрузите новый скриншот, мы отправим его администратору.'
+                : `Загрузите скриншот HAPP на телевизоре для получения +${reviewStatus?.bonus_days ?? 23} дней бесплатно.`}
             </p>
           </div>
 
@@ -435,6 +515,20 @@ export function AndroidTvWizard({
               Готово
             </Button>
           )}
+        </div>
+      )}
+
+      {phase === 'repeat_sent' && (
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-success-500/20 bg-success-500/10 p-8">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-500/20 text-success-400">
+            <CheckIcon />
+          </div>
+          <div className="text-center">
+            <p className="text-base font-semibold text-success-400">Скриншот отправлен</p>
+            <p className="mt-1 text-sm text-dark-400">
+              Администратор проверит повторный скриншот и включит подписку, если всё в порядке.
+            </p>
+          </div>
         </div>
       )}
     </div>
