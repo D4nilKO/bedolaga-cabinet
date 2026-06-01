@@ -1,11 +1,6 @@
 import { useCallback, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  androidTvApi,
-  sendTvCode,
-  submitReviewScreenshot,
-  uploadAndroidTvScreenshot,
-} from '@/api/androidTv';
+import { androidTvApi, sendTvCode, submitReviewScreenshot } from '@/api/androidTv';
 import { subscriptionApi } from '@/api/subscription';
 import { Button } from '@/components/primitives/Button';
 
@@ -218,8 +213,7 @@ export function AndroidTvWizard({
     setErrorMsg('');
 
     try {
-      const upload = await uploadAndroidTvScreenshot(selectedFile);
-      await submitReviewScreenshot(upload.file_id, subscriptionId);
+      await submitReviewScreenshot(selectedFile, subscriptionId);
       setPhase('bonus_success');
       onDone?.();
     } catch (error: unknown) {

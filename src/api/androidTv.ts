@@ -24,13 +24,6 @@ interface ReviewScreenshotResponse {
   bonus_days: number;
 }
 
-interface MediaUploadResponse {
-  media_type: string;
-  file_id: string;
-  file_unique_id: string | null;
-  media_url: string;
-}
-
 export interface AndroidTvConnectionLink {
   subscription_url: string | null;
   happ_link?: string | null;
@@ -51,25 +44,19 @@ export async function sendTvCode(code: string, subscriptionId?: number): Promise
   };
 }
 
-export async function uploadAndroidTvScreenshot(file: File): Promise<MediaUploadResponse> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('media_type', 'photo');
-
-  const response = await apiClient.post<MediaUploadResponse>('/cabinet/media/upload', formData);
-  return response.data;
-}
-
 export async function submitReviewScreenshot(
-  fileId: string,
+  file: File,
   subscriptionId?: number,
 ): Promise<ReviewScreenshotResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (subscriptionId != null) {
+    formData.append('subscription_id', String(subscriptionId));
+  }
+
   const response = await apiClient.post<ReviewScreenshotResponse>(
-    androidTvApiUrl('/review-screenshot'),
-    {
-      file_id: fileId,
-      subscription_id: subscriptionId ?? null,
-    },
+    androidTvApiUrl('/review-screenshot-upload'),
+    formData,
   );
   return response.data;
 }
@@ -83,6 +70,5 @@ export const androidTvApi = {
     return response.data;
   },
   sendTvCode,
-  uploadScreenshot: uploadAndroidTvScreenshot,
   submitReviewScreenshot,
 };
