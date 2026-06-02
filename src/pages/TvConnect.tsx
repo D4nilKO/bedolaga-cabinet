@@ -134,8 +134,7 @@ export default function TvConnect() {
           <div>
             <h1 className="text-2xl font-bold text-dark-50">Подключение Android TV</h1>
             <p className="mt-1 text-sm text-dark-400">
-              Отдельный сценарий для приставки: регистрация, 7 дней доступа, код HAPP и бонус за
-              отзыв.
+              Держите приставку рядом: код появится в HAPP на экране телевизора.
             </p>
           </div>
         </div>
