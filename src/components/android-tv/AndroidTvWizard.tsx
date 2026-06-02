@@ -407,6 +407,8 @@ export function AndroidTvWizard({
   const handleRetry = useCallback(() => {
     setPhase('idle');
     setErrorMsg('');
+    setCode('');
+    setSelectedFile(null);
     setHappNoCount(0);
     setHasSimilarVariants(false);
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -429,6 +431,7 @@ export function AndroidTvWizard({
       setErrorMsg(
         'Перезапустите приложение HAPP на приставке и введите новый код с экрана. Если снова не получится, обратитесь в поддержку.',
       );
+      setCode('');
       setPhase('error');
       setTimeout(() => inputRef.current?.focus(), 50);
       return;
@@ -455,6 +458,7 @@ export function AndroidTvWizard({
         result.errorMessage ||
           'Похожих вариантов кода больше нет. Перезапустите HAPP и введите новый код.',
       );
+      setCode('');
       setPhase('error');
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } }).response?.data
@@ -478,9 +482,11 @@ export function AndroidTvWizard({
       const result = await submitReviewScreenshot(selectedFile, subscriptionId);
       await refetchReviewStatus();
       if (result.review_status === 'repeat_sent') {
+        setSelectedFile(null);
         setPhase('repeat_sent');
         return;
       }
+      setSelectedFile(null);
       setPhase('bonus_success');
     } catch (error: unknown) {
       const status = (error as { response?: { status?: number } }).response?.status;
@@ -701,7 +707,16 @@ export function AndroidTvWizard({
         </div>
       )}
 
-      {phase === 'bonus_used' && !isDisabledReview && <ReviewBonusUsedNotice />}
+      {phase === 'bonus_used' && !isDisabledReview && (
+        <div className="space-y-4">
+          <ReviewBonusUsedNotice />
+          {standalone && (
+            <Button type="button" variant="secondary" size="lg" fullWidth onClick={onDone}>
+              Готово
+            </Button>
+          )}
+        </div>
+      )}
 
       {phase === 'screenshot' && canUploadReview && (
         <div className="space-y-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-5">
@@ -797,6 +812,11 @@ export function AndroidTvWizard({
               подписка отключена, дождитесь проверки или обратитесь в поддержку.
             </p>
           </div>
+          {standalone && (
+            <Button type="button" variant="secondary" size="lg" fullWidth onClick={onDone}>
+              Готово
+            </Button>
+          )}
         </div>
       )}
     </div>
