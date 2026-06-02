@@ -474,11 +474,11 @@ export function AndroidTvWizard({
         <div className="space-y-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-5">
           <div>
             <p className="text-base font-semibold text-dark-100">
-              {isDisabledReview ? 'Повторная проверка отзыва' : 'Бонус за отзыв'}
+              {isDisabledReview ? 'Подписка временно отключена' : 'Бонус за отзыв'}
             </p>
             <p className="mt-1 text-sm text-dark-400">
               {isDisabledReview
-                ? 'Подписка отключена после отклонения скриншота. Загрузите новый скриншот, мы отправим его администратору.'
+                ? 'Ваш скриншот был отклонен администратором. Загрузите новый скриншот хорошего отзыва, администратор проверит его вручную.'
                 : `Загрузите скриншот HAPP на телевизоре для получения +${reviewStatus?.bonus_days ?? 23} дней бесплатно.`}
             </p>
           </div>
