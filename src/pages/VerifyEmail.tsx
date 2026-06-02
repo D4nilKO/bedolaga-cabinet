@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/auth';
 import { useShallow } from 'zustand/shallow';
 import { consumeCampaignSlug, getPendingCampaignSlug } from '../utils/campaign';
 import { tokenStorage } from '../utils/token';
+import { consumeAndroidTvReturn } from '../utils/tvReturn';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function VerifyEmail() {
@@ -14,6 +15,7 @@ export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState('');
+  const [redirectTarget, setRedirectTarget] = useState<'dashboard' | 'tv'>('dashboard');
   const { setTokens, setUser, checkAdminStatus } = useAuthStore(
     useShallow((state) => ({
       setTokens: state.setTokens,
@@ -50,9 +52,10 @@ export default function VerifyEmail() {
           useAuthStore.setState({ pendingCampaignBonus: response.campaign_bonus });
         }
         checkAdminStatus();
+        const redirectTo = consumeAndroidTvReturn() ? '/tv' : '/';
+        setRedirectTarget(redirectTo === '/tv' ? 'tv' : 'dashboard');
         setStatus('success');
-        // Redirect to dashboard after short delay
-        redirectTimer = setTimeout(() => navigate('/', { replace: true }), 1500);
+        redirectTimer = setTimeout(() => navigate(redirectTo, { replace: true }), 800);
       } catch (err: unknown) {
         setStatus('error');
         const error = err as { response?: { data?: { detail?: string } } };
@@ -92,7 +95,9 @@ export default function VerifyEmail() {
               {t('emailVerification.success')}
             </h2>
             <p className="mt-2 text-sm text-dark-400 sm:text-base">
-              {t('emailVerification.redirecting', 'Redirecting to dashboard...')}
+              {redirectTarget === 'tv'
+                ? 'Возвращаемся к подключению Android TV...'
+                : t('emailVerification.redirecting', 'Redirecting to dashboard...')}
             </p>
             <div className="mt-4">
               <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-accent-500 border-t-transparent"></div>

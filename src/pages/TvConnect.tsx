@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/auth';
 import { AndroidTvWizard } from '@/components/android-tv/AndroidTvWizard';
 import { Button } from '@/components/primitives/Button';
 import { isValidEmail } from '@/utils/validation';
+import { markAndroidTvReturn } from '@/utils/tvReturn';
 
 type AuthMode = 'login' | 'register';
 type Step = 'auth' | 'connect' | 'done';
@@ -78,10 +79,11 @@ export default function TvConnect() {
           return;
         }
 
+        markAndroidTvReturn();
         const result = await registerWithEmail(email, password, firstName || undefined);
         if (result.requires_verification) {
           setNotice(
-            `Мы отправили письмо для подтверждения на ${result.email}. После подтверждения войдите здесь.`,
+            `Мы отправили письмо для подтверждения на ${result.email}. После подтверждения вы вернётесь к подключению Android TV.`,
           );
           setMode('login');
           setPassword('');

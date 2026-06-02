@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { androidTvApi, sendTvCode, submitReviewScreenshot } from '@/api/androidTv';
 import { subscriptionApi } from '@/api/subscription';
@@ -139,11 +139,13 @@ export function AndroidTvWizard({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const autoTrialAttemptedRef = useRef(false);
 
   const {
     data: linkData,
     isLoading: linkLoading,
     error: linkError,
+    refetch: refetchConnectionLink,
   } = useQuery({
     queryKey: ['android-tv-connection-link', subscriptionId],
     queryFn: () => androidTvApi.getConnectionLink(subscriptionId),
@@ -163,6 +165,7 @@ export function AndroidTvWizard({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['android-tv-connection-link'] });
       await queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      await refetchConnectionLink();
     },
     onError: (error: unknown) => {
       const detail = (error as { response?: { data?: { detail?: string } } }).response?.data
@@ -176,6 +179,15 @@ export function AndroidTvWizard({
   const reviewBonusUsed = reviewStatus?.bonus_used ?? false;
   const canUploadReview = reviewStatus?.can_upload_review ?? true;
   const isDisabledReview = reviewStatus?.subscription_status === 'disabled';
+
+  useEffect(() => {
+    if (!allowTrialActivation || autoTrialAttemptedRef.current) return;
+    if (linkLoading || subscriptionLink) return;
+    if (!linkError && linkData) return;
+
+    autoTrialAttemptedRef.current = true;
+    activateTrial.mutate();
+  }, [activateTrial, allowTrialActivation, linkData, linkError, linkLoading, subscriptionLink]);
 
   const handleCodeChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
@@ -326,7 +338,16 @@ export function AndroidTvWizard({
         </div>
       </div>
 
-      {!linkLoading && (linkError || !subscriptionLink) && (
+      {allowTrialActivation && activateTrial.isPending && !subscriptionLink && (
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-8">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-dark-600 border-t-accent-500" />
+          <p className="text-center text-sm text-dark-400">
+            Активируем 7 дней доступа для Android TV...
+          </p>
+        </div>
+      )}
+
+      {!activateTrial.isPending && !linkLoading && (linkError || !subscriptionLink) && (
         <div className="space-y-3 rounded-2xl border border-error-500/20 bg-error-500/10 p-4">
           <div className="flex items-start gap-3">
             <ExclamationIcon />
