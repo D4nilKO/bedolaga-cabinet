@@ -287,6 +287,8 @@ export function AndroidTvWizard({
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [guideMediaIndex, setGuideMediaIndex] = useState(0);
+  const [happNoCount, setHappNoCount] = useState(0);
+  const [hasSimilarVariants, setHasSimilarVariants] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const autoTrialAttemptedRef = useRef(false);
@@ -366,11 +368,14 @@ export function AndroidTvWizard({
 
       setPhase('loading');
       setErrorMsg('');
+      setHappNoCount(0);
+      setHasSimilarVariants(false);
 
       try {
         const result = await sendTvCode(trimmed, subscriptionId);
 
         if (result.success) {
+          setHasSimilarVariants(result.variantsRemaining);
           setPhase('confirm');
           return;
         }
@@ -398,6 +403,8 @@ export function AndroidTvWizard({
   const handleRetry = useCallback(() => {
     setPhase('idle');
     setErrorMsg('');
+    setHappNoCount(0);
+    setHasSimilarVariants(false);
     setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
 
@@ -411,6 +418,18 @@ export function AndroidTvWizard({
   }, [canUploadReview]);
 
   const handleConfirmNo = useCallback(async () => {
+    const nextNoCount = happNoCount + 1;
+    setHappNoCount(nextNoCount);
+
+    if (nextNoCount >= 2 || !hasSimilarVariants) {
+      setErrorMsg(
+        'Перезапустите приложение HAPP на приставке и введите новый код с экрана. Если снова не получится, обратитесь в поддержку.',
+      );
+      setPhase('error');
+      setTimeout(() => inputRef.current?.focus(), 50);
+      return;
+    }
+
     const trimmed = code.trim().toUpperCase();
     if (!validateTvCode(trimmed)) {
       setErrorMsg('Перезапустите HAPP на приставке и введите новый код с экрана.');
@@ -423,6 +442,7 @@ export function AndroidTvWizard({
     try {
       const result = await sendTvCode(trimmed, subscriptionId, true);
       if (result.success) {
+        setHasSimilarVariants(false);
         setPhase('confirm');
         return;
       }
@@ -438,7 +458,7 @@ export function AndroidTvWizard({
       setErrorMsg(detail || 'Не удалось попробовать похожие варианты кода.');
       setPhase('error');
     }
-  }, [code, subscriptionId]);
+  }, [code, happNoCount, hasSimilarVariants, subscriptionId]);
 
   const handleScreenshotSubmit = useCallback(async () => {
     if (!selectedFile) {
@@ -625,7 +645,8 @@ export function AndroidTvWizard({
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-8">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-dark-600 border-t-accent-500" />
           <p className="text-center text-sm text-dark-400">
-            Пробуем похожие варианты кода из-за символов 0/O, 1/I/L, 5/S, 2/Z, 8/B...
+            Пробуем следующие варианты кода автоматически. Подождите около минуты, пока отправим
+            остальные варианты из-за символов 0/O, 1/I/L, 5/S, 2/Z, 8/B.
           </p>
         </div>
       )}
@@ -637,12 +658,13 @@ export function AndroidTvWizard({
               <CheckIcon />
             </div>
             <div className="text-center">
-              <p className="text-base font-semibold text-success-400">Профиль отправлен!</p>
+              <p className="text-base font-semibold text-success-400">
+                {happNoCount > 0 ? 'Отправили дополнительные варианты кода' : 'Профиль отправлен!'}
+              </p>
               <p className="mt-1 text-sm text-dark-400">
-                Подписка должна активироваться на приставке в течение минуты.
-                <br />
-                Нажмите кнопку обновления в HAPP и проверьте, появился ли профиль. Если профиля нет,
-                нажмите «Нет» — мы попробуем похожие варианты кода.
+                {happNoCount > 0
+                  ? 'Пожалуйста, проверьте Android TV — подписка должна активироваться автоматически. Если в течение минуты ничего не произошло, нажмите «Нет».'
+                  : 'Подписка должна активироваться на приставке в течение минуты. Нажмите кнопку обновления в HAPP и проверьте, появился ли профиль. Если профиля нет, нажмите «Нет» — мы попробуем похожие варианты кода.'}
               </p>
             </div>
           </div>
@@ -660,7 +682,7 @@ export function AndroidTvWizard({
             Да, профиль появился
           </Button>
           <Button type="button" variant="secondary" size="lg" fullWidth onClick={handleConfirmNo}>
-            Нет, попробовать похожий код
+            {happNoCount > 0 ? 'Нет, ввести новый код' : 'Нет, попробовать похожие варианты'}
           </Button>
           <Button
             type="button"
