@@ -36,6 +36,12 @@ export interface ReviewStatusResponse {
   bonus_days: number;
 }
 
+export interface EnsureSubscriptionResponse {
+  success: boolean;
+  subscription_id: number | null;
+  start_days: number;
+}
+
 export interface AndroidTvConnectionLink {
   subscription_url: string | null;
   happ_link?: string | null;
@@ -81,6 +87,12 @@ export async function submitReviewScreenshot(
 }
 
 export const androidTvApi = {
+  ensureSubscription: async (): Promise<EnsureSubscriptionResponse> => {
+    const response = await apiClient.post<EnsureSubscriptionResponse>(
+      androidTvApiUrl('/ensure-subscription'),
+    );
+    return response.data;
+  },
   getConnectionLink: async (subscriptionId?: number): Promise<AndroidTvConnectionLink> => {
     const response = await apiClient.get<AndroidTvConnectionLink>(
       '/cabinet/subscription/connection-link',

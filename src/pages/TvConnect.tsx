@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router';
 import { useAuthStore } from '@/store/auth';
 import { AndroidTvWizard } from '@/components/android-tv/AndroidTvWizard';
 import { Button } from '@/components/primitives/Button';
@@ -47,6 +48,7 @@ function OnboardingStep({ n, title, text }: { n: number; title: string; text: st
 }
 
 export default function TvConnect() {
+  const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
   const loginWithEmail = useAuthStore((state) => state.loginWithEmail);
@@ -266,9 +268,17 @@ export default function TvConnect() {
         {step === 'done' && (
           <section className="rounded-2xl border border-success-500/20 bg-success-500/10 p-8 text-center">
             <p className="text-lg font-semibold text-success-400">Готово</p>
-            <p className="mt-2 text-sm text-dark-300">
-              Android TV подключен. Можно закрыть страницу.
-            </p>
+            <p className="mt-2 text-sm text-dark-300">Android TV подключен.</p>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              fullWidth
+              className="mt-5"
+              onClick={() => navigate('/')}
+            >
+              В главное меню
+            </Button>
           </section>
         )}
       </div>

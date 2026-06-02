@@ -9,7 +9,6 @@ import {
 } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { androidTvApi, sendTvCode, submitReviewScreenshot } from '@/api/androidTv';
-import { subscriptionApi } from '@/api/subscription';
 import { Button } from '@/components/primitives/Button';
 
 type Phase =
@@ -312,17 +311,18 @@ export function AndroidTvWizard({
     staleTime: 30_000,
   });
 
-  const activateTrial = useMutation({
-    mutationFn: () => subscriptionApi.activateTrial(),
+  const enableAndroidTvAccess = useMutation({
+    mutationFn: () => androidTvApi.ensureSubscription(),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['android-tv-connection-link'] });
-      await queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      await queryClient.invalidateQueries({ queryKey: ['subscriptions-list'] });
+      await queryClient.invalidateQueries({ queryKey: ['subscription'] });
       await refetchConnectionLink();
     },
     onError: (error: unknown) => {
       const detail = (error as { response?: { data?: { detail?: string } } }).response?.data
         ?.detail;
-      setErrorMsg(detail || 'Не удалось активировать пробный период.');
+      setErrorMsg(detail || 'Не удалось включить доступ для Android TV.');
       setPhase('error');
     },
   });
@@ -346,8 +346,15 @@ export function AndroidTvWizard({
     if (!linkError && linkData) return;
 
     autoTrialAttemptedRef.current = true;
-    activateTrial.mutate();
-  }, [activateTrial, allowTrialActivation, linkData, linkError, linkLoading, subscriptionLink]);
+    enableAndroidTvAccess.mutate();
+  }, [
+    enableAndroidTvAccess,
+    allowTrialActivation,
+    linkData,
+    linkError,
+    linkLoading,
+    subscriptionLink,
+  ]);
 
   const handleCodeChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
@@ -449,16 +456,11 @@ export function AndroidTvWizard({
         return;
       }
 
-      setErrorMsg(
-        result.errorMessage ||
-          'Похожих вариантов кода больше нет. Перезапустите HAPP и введите новый код.',
-      );
+      setErrorMsg('Перезапустите HAPP на приставке и введите новый код с экрана.');
       setCode('');
       setPhase('error');
-    } catch (error: unknown) {
-      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data
-        ?.detail;
-      setErrorMsg(detail || 'Не удалось попробовать похожие варианты кода.');
+    } catch {
+      setErrorMsg('Не удалось подключить профиль. Перезапустите HAPP и введите новый код.');
       setPhase('error');
     }
   }, [code, happNoCount, hasSimilarVariants, subscriptionId]);
@@ -509,7 +511,7 @@ export function AndroidTvWizard({
           <FlowStep
             n={1}
             title="Доступ"
-            text="Если подписки нет, мы автоматически включим 7 дней пробного доступа."
+            text="Если подписки нет, мы автоматически включим доступ для Android TV."
             done={Boolean(subscriptionLink)}
           />
           <FlowStep
@@ -529,7 +531,7 @@ export function AndroidTvWizard({
           <FlowStep
             n={4}
             title="Отзыв"
-            text={`Скриншот хорошего отзыва на маркетплейсе дает +${bonusDays} дней, если бонус еще не использован.`}
+            text="После подключения можно отправить скриншот отзыва."
             active={flowStep === 4}
             done={flowStep > 4}
           />
@@ -554,16 +556,14 @@ export function AndroidTvWizard({
         </div>
       </div>
 
-      {allowTrialActivation && activateTrial.isPending && !subscriptionLink && (
+      {allowTrialActivation && enableAndroidTvAccess.isPending && !subscriptionLink && (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-8">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-dark-600 border-t-accent-500" />
-          <p className="text-center text-sm text-dark-400">
-            Активируем 7 дней доступа для Android TV...
-          </p>
+          <p className="text-center text-sm text-dark-400">Включаем доступ для Android TV...</p>
         </div>
       )}
 
-      {!activateTrial.isPending && !linkLoading && (linkError || !subscriptionLink) && (
+      {!enableAndroidTvAccess.isPending && !linkLoading && (linkError || !subscriptionLink) && (
         <div className="space-y-3 rounded-2xl border border-error-500/20 bg-error-500/10 p-4">
           <div className="flex items-start gap-3">
             <ExclamationIcon />
@@ -571,7 +571,7 @@ export function AndroidTvWizard({
               <p className="text-sm font-medium text-error-400">Подписка не найдена</p>
               <p className="mt-1 text-sm text-dark-400">
                 Для подключения Android TV нужна активная подписка. Если вы пришли сюда впервые,
-                нажмите кнопку ниже: кабинет выдаст пробные 7 дней, как Android TV бот.
+                нажмите кнопку ниже.
               </p>
             </div>
           </div>
@@ -581,10 +581,10 @@ export function AndroidTvWizard({
               variant="secondary"
               size="md"
               fullWidth
-              loading={activateTrial.isPending}
-              onClick={() => activateTrial.mutate()}
+              loading={enableAndroidTvAccess.isPending}
+              onClick={() => enableAndroidTvAccess.mutate()}
             >
-              Активировать пробный период
+              Включить доступ
             </Button>
           )}
         </div>
@@ -599,8 +599,7 @@ export function AndroidTvWizard({
           <form onSubmit={handleSubmit} className="space-y-4">
             <InfoNote>
               Код появляется в HAPP на телевизоре после кнопки «Поделиться через Веб». Вводите
-              только 5 символов с экрана; похожие символы вроде 0/O и 1/I/L мы сможем проверить
-              автоматически, если профиль не появится.
+              только 5 символов с экрана.
             </InfoNote>
             <input
               ref={inputRef}
@@ -648,8 +647,7 @@ export function AndroidTvWizard({
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-8">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-dark-600 border-t-accent-500" />
           <p className="text-center text-sm text-dark-400">
-            Пробуем следующие варианты кода автоматически. Подождите около минуты, пока отправим
-            остальные варианты из-за символов 0/O, 1/I/L, 5/S, 2/Z, 8/B.
+            Проверяем подключение. Подождите немного и затем проверьте HAPP на приставке.
           </p>
         </div>
       )}
@@ -662,12 +660,12 @@ export function AndroidTvWizard({
             </div>
             <div className="text-center">
               <p className="text-base font-semibold text-success-400">
-                {happNoCount > 0 ? 'Отправили дополнительные варианты кода' : 'Профиль отправлен!'}
+                {happNoCount > 0 ? 'Пробуем подключить ещё раз' : 'Профиль отправлен!'}
               </p>
               <p className="mt-1 text-sm text-dark-400">
                 {happNoCount > 0
-                  ? 'Пожалуйста, проверьте Android TV — подписка должна активироваться автоматически. Если в течение минуты ничего не произошло, нажмите «Нет».'
-                  : 'Подписка должна активироваться на приставке в течение минуты. Нажмите кнопку обновления в HAPP и проверьте, появился ли профиль. Если профиля нет, нажмите «Нет» — мы попробуем похожие варианты кода.'}
+                  ? 'Проверьте HAPP на приставке. Если профиль не появился, введите новый код с экрана.'
+                  : 'Подписка должна появиться на приставке в течение минуты. Нажмите кнопку обновления в HAPP и проверьте профиль.'}
               </p>
             </div>
           </div>
@@ -685,7 +683,7 @@ export function AndroidTvWizard({
             Да, профиль появился
           </Button>
           <Button type="button" variant="secondary" size="lg" fullWidth onClick={handleConfirmNo}>
-            {happNoCount > 0 ? 'Нет, ввести новый код' : 'Нет, попробовать похожие варианты'}
+            {happNoCount > 0 ? 'Нет, ввести новый код' : 'Нет, профиль не появился'}
           </Button>
           <Button
             type="button"
@@ -719,15 +717,14 @@ export function AndroidTvWizard({
             </p>
             <p className="mt-1 text-sm text-dark-400">
               {isDisabledReview
-                ? 'Ваш скриншот был отклонен администратором. Загрузите новый скриншот хорошего отзыва, администратор проверит его вручную.'
-                : `Загрузите скриншот хорошего отзыва на маркетплейсе для получения +${bonusDays} дней бесплатно. Бонус начисляется один раз.`}
+                ? 'Загрузите новый скриншот отзыва.'
+                : `Загрузите скриншот хорошего отзыва на маркетплейсе для получения +${bonusDays} дней.`}
             </p>
           </div>
 
           <InfoNote>
-            На скриншоте должен быть виден ваш хороший отзыв о приложении/сервисе на маркетплейсе.
-            После загрузки бот отправит скриншот администраторам; при обычной отправке бонус
-            начисляется сразу, а при повторной проверке администратор включит подписку вручную.
+            На скриншоте должен быть виден ваш хороший отзыв. После загрузки скриншот отправится на
+            проверку.
           </InfoNote>
 
           <input
@@ -770,7 +767,7 @@ export function AndroidTvWizard({
       {phase === 'screenshot_loading' && (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-8">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-dark-600 border-t-accent-500" />
-          <p className="text-sm text-dark-400">Загружаем скриншот...</p>
+          <p className="text-sm text-dark-400">Проверяем скриншот...</p>
         </div>
       )}
 
@@ -780,7 +777,7 @@ export function AndroidTvWizard({
             <CheckIcon />
           </div>
           <div className="text-center">
-            <p className="text-base font-semibold text-success-400">Бонус начислен</p>
+            <p className="text-base font-semibold text-success-400">Скриншот принят</p>
             <p className="mt-1 text-sm text-dark-400">
               Мы добавили к подписке {bonusDays} дней. Обновите профиль в HAPP на приставке.
             </p>
@@ -801,8 +798,7 @@ export function AndroidTvWizard({
           <div className="text-center">
             <p className="text-base font-semibold text-success-400">Скриншот отправлен</p>
             <p className="mt-1 text-sm text-dark-400">
-              Администратор проверит повторный скриншот и включит подписку, если всё в порядке. Пока
-              подписка отключена, дождитесь проверки или обратитесь в поддержку.
+              Мы получили скриншот и отправили его на проверку.
             </p>
           </div>
           {standalone && (
