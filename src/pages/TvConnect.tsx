@@ -32,6 +32,20 @@ function extractError(error: unknown, fallback: string): string {
   );
 }
 
+function OnboardingStep({ n, title, text }: { n: number; title: string; text: string }) {
+  return (
+    <div className="flex gap-3 rounded-xl border border-dark-700/40 bg-dark-900/35 px-3 py-3">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-500/20 text-sm font-bold text-accent-400">
+        {n}
+      </span>
+      <div>
+        <p className="text-sm font-semibold text-dark-100">{title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-dark-400">{text}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function TvConnect() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
@@ -120,13 +134,37 @@ export default function TvConnect() {
           <div>
             <h1 className="text-2xl font-bold text-dark-50">Подключение Android TV</h1>
             <p className="mt-1 text-sm text-dark-400">
-              Войдите, введите код с ТВ и загрузите скриншот отзыва.
+              Отдельный сценарий для приставки: регистрация, 7 дней доступа, код HAPP и бонус за
+              отзыв.
             </p>
           </div>
         </div>
 
         {step === 'auth' && (
-          <section className="rounded-2xl border border-dark-700/50 bg-dark-800/50 p-5">
+          <section className="space-y-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-5">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <OnboardingStep
+                n={1}
+                title="Войдите или создайте аккаунт"
+                text="Если аккаунта нет, после подтверждения email мы вернем вас к подключению Android TV."
+              />
+              <OnboardingStep
+                n={2}
+                title="Получите пробный доступ"
+                text="После входа кабинет автоматически выдаст 7 дней подписки, как Android TV бот."
+              />
+              <OnboardingStep
+                n={3}
+                title="Введите код HAPP"
+                text="Код берется с экрана телевизора после кнопки «Поделиться через Веб»."
+              />
+              <OnboardingStep
+                n={4}
+                title="Отправьте отзыв"
+                text="Скриншот хорошего отзыва на маркетплейсе даст дополнительные дни, если бонус еще не использован."
+              />
+            </div>
+
             <div className="mb-5 grid grid-cols-2 rounded-xl bg-dark-900/70 p-1">
               <button
                 type="button"
@@ -204,8 +242,9 @@ export default function TvConnect() {
               )}
 
               {notice && (
-                <div className="rounded-xl border border-success-500/20 bg-success-500/10 px-4 py-3 text-sm text-success-400">
-                  {notice}
+                <div className="rounded-xl border border-success-500/20 bg-success-500/10 px-4 py-3 text-sm leading-relaxed text-success-400">
+                  {notice} Если ссылка из письма откроется в другой вкладке, просто вернитесь на эту
+                  страницу: <span className="font-semibold">/tv</span>.
                 </div>
               )}
               {error && (

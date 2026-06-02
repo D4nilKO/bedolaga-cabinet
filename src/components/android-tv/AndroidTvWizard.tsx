@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { androidTvApi, sendTvCode, submitReviewScreenshot } from '@/api/androidTv';
 import { subscriptionApi } from '@/api/subscription';
@@ -15,6 +23,39 @@ type Phase =
   | 'bonus_used'
   | 'repeat_sent'
   | 'error';
+
+const GUIDE_MEDIA = [
+  {
+    src: '/android-tv-api/guide/1.png',
+    type: 'image',
+    title: 'Откройте приложения на приставке',
+  },
+  {
+    src: '/android-tv-api/guide/2.png',
+    type: 'image',
+    title: 'Запустите HAPP',
+  },
+  {
+    src: '/android-tv-api/guide/3.png',
+    type: 'image',
+    title: 'Нажмите «Поделиться через Веб»',
+  },
+  {
+    src: '/android-tv-api/guide/4.jpg',
+    type: 'image',
+    title: 'Не сканируйте QR-код',
+  },
+  {
+    src: '/android-tv-api/guide/5.jpg',
+    type: 'image',
+    title: 'После отправки проверьте профиль',
+  },
+  {
+    src: '/android-tv-api/guide/6.mp4',
+    type: 'video',
+    title: 'Видеоинструкция',
+  },
+] as const;
 
 function TvIcon() {
   return (
@@ -95,11 +136,119 @@ function StepBadge({ n }: { n: number }) {
   );
 }
 
+function FlowStep({
+  n,
+  title,
+  text,
+  active,
+  done,
+}: {
+  n: number;
+  title: string;
+  text: string;
+  active?: boolean;
+  done?: boolean;
+}) {
+  return (
+    <div
+      className={`flex gap-3 rounded-xl border px-3 py-3 ${
+        active ? 'border-accent-500/40 bg-accent-500/10' : 'border-dark-700/40 bg-dark-900/35'
+      }`}
+    >
+      <span
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+          done
+            ? 'bg-success-500/20 text-success-400'
+            : active
+              ? 'bg-accent-500/20 text-accent-400'
+              : 'bg-dark-700/70 text-dark-400'
+        }`}
+      >
+        {done ? <CheckIcon /> : n}
+      </span>
+      <div>
+        <p className={`text-sm font-semibold ${active ? 'text-dark-50' : 'text-dark-200'}`}>
+          {title}
+        </p>
+        <p className="mt-0.5 text-xs leading-relaxed text-dark-400">{text}</p>
+      </div>
+    </div>
+  );
+}
+
 function GuideStep({ n, text }: { n: number; text: string }) {
   return (
     <div className="flex items-start gap-3">
       <StepBadge n={n} />
       <p className="pt-0.5 text-sm leading-relaxed text-dark-200">{text}</p>
+    </div>
+  );
+}
+
+function InfoNote({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-dark-700/50 bg-dark-900/45 px-4 py-3 text-sm leading-relaxed text-dark-300">
+      {children}
+    </div>
+  );
+}
+
+function GuideMedia({
+  activeIndex,
+  onSelect,
+}: {
+  activeIndex: number;
+  onSelect: (index: number) => void;
+}) {
+  const item = GUIDE_MEDIA[activeIndex] ?? GUIDE_MEDIA[0];
+
+  return (
+    <div className="space-y-3 border-t border-dark-700/50 pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-dark-100">Визуальная инструкция</p>
+          <p className="mt-0.5 text-xs text-dark-400">{item.title}</p>
+        </div>
+        <p className="shrink-0 text-xs font-medium text-dark-500">
+          {activeIndex + 1}/{GUIDE_MEDIA.length}
+        </p>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-dark-700/50 bg-dark-900/60">
+        {item.type === 'video' ? (
+          <video
+            src={item.src}
+            controls
+            preload="metadata"
+            className="aspect-video w-full bg-dark-950 object-contain"
+          />
+        ) : (
+          <img
+            src={item.src}
+            alt={item.title}
+            loading="lazy"
+            className="aspect-video w-full bg-dark-950 object-contain"
+          />
+        )}
+      </div>
+
+      <div className="grid grid-cols-6 gap-1.5">
+        {GUIDE_MEDIA.map((media, index) => (
+          <button
+            key={media.src}
+            type="button"
+            onClick={() => onSelect(index)}
+            className={`h-9 rounded-lg border text-xs font-semibold transition ${
+              index === activeIndex
+                ? 'border-accent-500/50 bg-accent-500/15 text-accent-300'
+                : 'border-dark-700/50 bg-dark-900/45 text-dark-400 hover:text-dark-100'
+            }`}
+            aria-label={media.title}
+          >
+            {index + 1}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -111,8 +260,8 @@ function ReviewBonusUsedNotice() {
       <div>
         <p className="text-sm font-semibold text-warning-400">Бонус за отзыв уже использован</p>
         <p className="mt-1 text-sm text-dark-400">
-          Повторный скриншот отправлять не нужно. Если профиль не появился на приставке, подключите
-          устройство ещё раз или обратитесь в поддержку.
+          Повторный скриншот отправлять не нужно: бонус начисляется только один раз. Если профиль не
+          появился на приставке, подключите устройство ещё раз или обратитесь в поддержку.
         </p>
       </div>
     </div>
@@ -137,6 +286,7 @@ export function AndroidTvWizard({
   const [phase, setPhase] = useState<Phase>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [guideMediaIndex, setGuideMediaIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const autoTrialAttemptedRef = useRef(false);
@@ -179,6 +329,15 @@ export function AndroidTvWizard({
   const reviewBonusUsed = reviewStatus?.bonus_used ?? false;
   const canUploadReview = reviewStatus?.can_upload_review ?? true;
   const isDisabledReview = reviewStatus?.subscription_status === 'disabled';
+  const bonusDays = reviewStatus?.bonus_days ?? 23;
+  const flowStep =
+    phase === 'confirm'
+      ? 3
+      : phase === 'screenshot' || phase === 'screenshot_loading'
+        ? 4
+        : phase === 'bonus_success' || phase === 'bonus_used' || phase === 'repeat_sent'
+          ? 5
+          : 2;
 
   useEffect(() => {
     if (!allowTrialActivation || autoTrialAttemptedRef.current) return;
@@ -321,10 +480,39 @@ export function AndroidTvWizard({
           <TvIcon />
           <p className="text-base font-semibold">Подключение Android TV</p>
         </div>
+        <div className="mb-4 grid gap-2 sm:grid-cols-2">
+          <FlowStep
+            n={1}
+            title="Доступ"
+            text="Если подписки нет, мы автоматически включим 7 дней пробного доступа."
+            done={Boolean(subscriptionLink)}
+          />
+          <FlowStep
+            n={2}
+            title="Код HAPP"
+            text="Введите 5 символов с экрана телевизора. QR-код сканировать не нужно."
+            active={flowStep === 2}
+            done={flowStep > 2}
+          />
+          <FlowStep
+            n={3}
+            title="Проверка"
+            text="После отправки кода обновите HAPP и подтвердите, появился ли профиль."
+            active={flowStep === 3}
+            done={flowStep > 3}
+          />
+          <FlowStep
+            n={4}
+            title="Отзыв"
+            text={`Скриншот хорошего отзыва на маркетплейсе дает +${bonusDays} дней, если бонус еще не использован.`}
+            active={flowStep === 4}
+            done={flowStep > 4}
+          />
+        </div>
         <div className="space-y-3">
           <GuideStep
             n={1}
-            text="Скачайте приложение HAPP на приставку через Google Play, AppStore или OTA UPDATE."
+            text="Скачайте приложение HAPP на приставку через Google Play. Если Google Play недоступен, используйте AppStore или OTA UPDATE."
           />
           <GuideStep n={2} text="Откройте приложение HAPP на приставке." />
           <GuideStep
@@ -335,6 +523,9 @@ export function AndroidTvWizard({
             n={4}
             text="Введите этот код ниже. QR-код с телевизора сканировать не нужно."
           />
+        </div>
+        <div className="mt-4">
+          <GuideMedia activeIndex={guideMediaIndex} onSelect={setGuideMediaIndex} />
         </div>
       </div>
 
@@ -354,7 +545,8 @@ export function AndroidTvWizard({
             <div>
               <p className="text-sm font-medium text-error-400">Подписка не найдена</p>
               <p className="mt-1 text-sm text-dark-400">
-                Для подключения Android TV нужна активная подписка.
+                Для подключения Android TV нужна активная подписка. Если вы пришли сюда впервые,
+                нажмите кнопку ниже: кабинет выдаст пробные 7 дней, как Android TV бот.
               </p>
             </div>
           </div>
@@ -382,6 +574,11 @@ export function AndroidTvWizard({
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <InfoNote>
+              Код появляется в HAPP на телевизоре после кнопки «Поделиться через Веб». Вводите
+              только 5 символов с экрана; похожие символы вроде 0/O и 1/I/L мы сможем проверить
+              автоматически, если профиль не появится.
+            </InfoNote>
             <input
               ref={inputRef}
               type="text"
@@ -444,9 +641,19 @@ export function AndroidTvWizard({
               <p className="mt-1 text-sm text-dark-400">
                 Подписка должна активироваться на приставке в течение минуты.
                 <br />
-                Нажмите кнопку обновления в HAPP и проверьте, появился ли профиль.
+                Нажмите кнопку обновления в HAPP и проверьте, появился ли профиль. Если профиля нет,
+                нажмите «Нет» — мы попробуем похожие варианты кода.
               </p>
             </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-success-500/20 bg-dark-900/40">
+            <img
+              src="/android-tv-api/guide/7.png"
+              alt="Проверка активного профиля HAPP"
+              loading="lazy"
+              className="aspect-video w-full object-contain"
+            />
           </div>
 
           <Button type="button" variant="primary" size="lg" fullWidth onClick={handleConfirmYes}>
@@ -479,9 +686,15 @@ export function AndroidTvWizard({
             <p className="mt-1 text-sm text-dark-400">
               {isDisabledReview
                 ? 'Ваш скриншот был отклонен администратором. Загрузите новый скриншот хорошего отзыва, администратор проверит его вручную.'
-                : `Загрузите скриншот HAPP на телевизоре для получения +${reviewStatus?.bonus_days ?? 23} дней бесплатно.`}
+                : `Загрузите скриншот хорошего отзыва на маркетплейсе для получения +${bonusDays} дней бесплатно. Бонус начисляется один раз.`}
             </p>
           </div>
+
+          <InfoNote>
+            На скриншоте должен быть виден ваш хороший отзыв о приложении/сервисе на маркетплейсе.
+            После загрузки бот отправит скриншот администраторам; при обычной отправке бонус
+            начисляется сразу, а при повторной проверке администратор включит подписку вручную.
+          </InfoNote>
 
           <input
             ref={fileRef}
@@ -535,7 +748,7 @@ export function AndroidTvWizard({
           <div className="text-center">
             <p className="text-base font-semibold text-success-400">Бонус начислен</p>
             <p className="mt-1 text-sm text-dark-400">
-              Мы добавили к подписке 23 дня. Обновите профиль в HAPP на приставке.
+              Мы добавили к подписке {bonusDays} дней. Обновите профиль в HAPP на приставке.
             </p>
           </div>
           {standalone && (
@@ -554,7 +767,8 @@ export function AndroidTvWizard({
           <div className="text-center">
             <p className="text-base font-semibold text-success-400">Скриншот отправлен</p>
             <p className="mt-1 text-sm text-dark-400">
-              Администратор проверит повторный скриншот и включит подписку, если всё в порядке.
+              Администратор проверит повторный скриншот и включит подписку, если всё в порядке. Пока
+              подписка отключена, дождитесь проверки или обратитесь в поддержку.
             </p>
           </div>
         </div>
