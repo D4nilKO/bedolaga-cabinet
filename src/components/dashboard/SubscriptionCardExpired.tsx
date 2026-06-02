@@ -44,7 +44,7 @@ export default function SubscriptionCardExpired({
   // Detect daily subscription (disabled or expired)
   const isDaily = subscription.is_daily;
   const isDisabledDaily = subscription.status === 'disabled' && isDaily;
-  const isDisabledByReview = subscription.status === 'disabled';
+  const isDisabledByReview = subscription.status === 'disabled' && !isDaily;
 
   // For daily subs, check if balance covers daily price; otherwise 100 kopeks minimum
   const dailyPrice = subscription.daily_price_kopeks ?? 0;

@@ -274,6 +274,7 @@ export default function Subscription() {
   );
   const shouldHideConnectionLink =
     subscription?.hide_subscription_link || connectionLink?.hide_link;
+  const isDisabledByReview = subscription?.status === 'disabled' && !subscription.is_daily;
 
   // Traffic zone (theme-aware) — called unconditionally at top level
   const usedPercent = trafficData?.traffic_used_percent ?? subscription?.traffic_used_percent ?? 0;
@@ -676,7 +677,7 @@ export default function Subscription() {
                 </div>
               )}
 
-              {subscription.status === 'disabled' && (
+              {isDisabledByReview && (
                 <div className="mb-6 rounded-[14px] border border-warning-500/25 bg-warning-500/10 p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-warning-500/15 text-warning-400">

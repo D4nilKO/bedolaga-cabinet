@@ -328,14 +328,9 @@ export function AndroidTvWizard({
   });
 
   const subscriptionLink = linkData ? resolveSubscriptionLink(linkData) : null;
-  const reviewBonusUsed = reviewStatus?.bonus_used ?? false;
   const canUploadReview = reviewStatus?.can_upload_review ?? true;
   const isDisabledReview = reviewStatus?.subscription_status === 'disabled';
   const bonusDays = reviewStatus?.bonus_days ?? 23;
-  const shouldShowBonusUsedNotice =
-    reviewBonusUsed &&
-    !isDisabledReview &&
-    !['bonus_success', 'bonus_used', 'repeat_sent', 'screenshot_loading'].includes(phase);
   const flowStep =
     phase === 'confirm'
       ? 3
@@ -594,8 +589,6 @@ export function AndroidTvWizard({
           )}
         </div>
       )}
-
-      {shouldShowBonusUsedNotice && <ReviewBonusUsedNotice />}
 
       {(phase === 'idle' || phase === 'error') && (
         <div className="rounded-2xl border border-dark-700/50 bg-dark-800/50 p-5">
