@@ -44,6 +44,7 @@ export default function SubscriptionCardExpired({
   // Detect daily subscription (disabled or expired)
   const isDaily = subscription.is_daily;
   const isDisabledDaily = subscription.status === 'disabled' && isDaily;
+  const isDisabledByReview = subscription.status === 'disabled';
 
   // For daily subs, check if balance covers daily price; otherwise 100 kopeks minimum
   const dailyPrice = subscription.daily_price_kopeks ?? 0;
@@ -218,6 +219,24 @@ export default function SubscriptionCardExpired({
         <p className="mb-4 text-sm text-dark-50/60">
           {t('subscription.trafficLimitedDescription')}
         </p>
+      )}
+
+      {isDisabledByReview && (
+        <div className="mb-4 rounded-[14px] border border-warning-500/25 bg-warning-500/10 p-4">
+          <p className="text-sm font-semibold text-warning-300">
+            Подписка отключена после проверки скриншота
+          </p>
+          <p className="mt-1 text-xs leading-5 text-dark-50/60">
+            Загрузите новый скриншот отзыва на странице Android TV, чтобы администратор включил
+            подписку снова.
+          </p>
+          <Link
+            to="/tv"
+            className="mt-3 inline-flex min-h-[40px] items-center justify-center rounded-lg bg-warning-500 px-3 py-2 text-xs font-semibold text-dark-950 transition-colors hover:bg-warning-400"
+          >
+            Перейти на Android TV
+          </Link>
+        </div>
       )}
 
       {/* Expired date + Balance row */}
