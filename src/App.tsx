@@ -64,6 +64,8 @@ const GiftSubscription = lazyWithRetry(() => import('./pages/GiftSubscription'))
 const GiftResult = lazyWithRetry(() => import('./pages/GiftResult'));
 const Connection = lazyWithRetry(() => import('./pages/Connection'));
 const ConnectionQR = lazyWithRetry(() => import('./pages/ConnectionQR'));
+const AndroidTvConnect = lazyWithRetry(() => import('./pages/AndroidTvConnect'));
+const TvConnect = lazyWithRetry(() => import('./pages/TvConnect'));
 const QuickPurchase = lazyWithRetry(() => import('./pages/QuickPurchase'));
 const PurchaseSuccess = lazyWithRetry(() => import('./pages/PurchaseSuccess'));
 const GiftClaim = lazyWithRetry(() => import('./pages/GiftClaim'));
@@ -304,6 +306,16 @@ function App() {
             <LazyPage>
               <AutoLogin />
             </LazyPage>
+          }
+        />
+        <Route
+          path="/tv"
+          element={
+            <ErrorBoundary level="app">
+              <LazyPage>
+                <TvConnect />
+              </LazyPage>
+            </ErrorBoundary>
           }
         />
 
@@ -564,6 +576,16 @@ function App() {
             <ProtectedRoute>
               <LazyPage>
                 <Connection />
+              </LazyPage>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/android-tv"
+          element={
+            <ProtectedRoute>
+              <LazyPage>
+                <AndroidTvConnect />
               </LazyPage>
             </ProtectedRoute>
           }

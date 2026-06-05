@@ -21,9 +21,21 @@ services:
       # Маппинг: <хост-порт>:<контейнер-порт>
       # Внутри контейнера nginx слушает на порту 80
       - '${CABINET_PORT:-3020}:80'
+    networks:
+      - remnawave-network
+      - bot_network
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/']
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 10s
+
+networks:
+  remnawave-network:
+    name: remnawave-network
+    driver: bridge
+    external: true
+  bot_network:
+    name: remnawave-bedolaga-telegram-bot_bot_network
+    external: true

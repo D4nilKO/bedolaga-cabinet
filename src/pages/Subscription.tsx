@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { subscriptionApi } from '../api/subscription';
+import { androidTvApi } from '../api/androidTv';
 import { DEVICE_ALIAS_MAX_LENGTH } from '../constants/devices';
 import { WebBackButton } from '../components/WebBackButton';
 import { useDestructiveConfirm } from '../platform/hooks/useNativeDialog';
@@ -274,6 +275,15 @@ export default function Subscription() {
   );
   const shouldHideConnectionLink =
     subscription?.hide_subscription_link || connectionLink?.hide_link;
+  const isDisabledByReview = subscription?.status === 'disabled' && !subscription.is_daily;
+  const { data: androidTvReviewStatus } = useQuery({
+    queryKey: ['android-tv-review-status', subscriptionId],
+    queryFn: () => androidTvApi.getReviewStatus(subscriptionId),
+    enabled: Boolean(isDisabledByReview),
+    retry: false,
+    staleTime: 15_000,
+  });
+  const isReviewPending = androidTvReviewStatus?.review_pending ?? false;
 
   // Traffic zone (theme-aware) — called unconditionally at top level
   const usedPercent = trafficData?.traffic_used_percent ?? subscription?.traffic_used_percent ?? 0;
@@ -625,7 +635,9 @@ export default function Subscription() {
                     : subscription.is_limited
                       ? t('subscription.trafficLimited')
                       : subscription.status === 'disabled'
-                        ? t('subscription.pause.suspended')
+                        ? isDisabledByReview
+                          ? '❌ Подписка временно отключена'
+                          : t('subscription.pause.suspended')
                         : t('subscription.expired')}
                 </span>
               </div>
@@ -671,6 +683,51 @@ export default function Subscription() {
                       <p className="mt-1 text-xs text-dark-400">
                         {t('subscription.trafficLimitedDescription')}
                       </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isDisabledByReview && (
+                <div className="mb-6 rounded-[14px] border border-warning-500/25 bg-warning-500/10 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-warning-500/15 text-warning-400">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-warning-300">
+                        {isReviewPending
+                          ? 'Скриншот проходит проверку администратором'
+                          : '❌ Подписка временно отключена'}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-dark-300">
+                        {isReviewPending
+                          ? 'Подписка будет восстановлена, когда проверка завершится.'
+                          : 'Администратор отклонил скриншот отзыва. Чтобы вернуть доступ, загрузите новый скриншот на странице подключения Android TV.'}
+                      </p>
+                      {!isReviewPending && (
+                        <button
+                          type="button"
+                          onClick={() => navigate('/tv')}
+                          className="mt-3 rounded-lg bg-warning-500 px-3 py-2 text-xs font-semibold text-dark-950 transition-colors hover:bg-warning-400"
+                        >
+                          Отправить новый скриншот
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
