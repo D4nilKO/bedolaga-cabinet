@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import type { Subscription } from '../../types';
 import { subscriptionApi } from '../../api/subscription';
+import { androidTvApi } from '../../api/androidTv';
 import { useTheme } from '../../hooks/useTheme';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useHapticFeedback } from '../../platform/hooks/useHaptic';
@@ -45,6 +46,14 @@ export default function SubscriptionCardExpired({
   const isDaily = subscription.is_daily;
   const isDisabledDaily = subscription.status === 'disabled' && isDaily;
   const isDisabledByReview = subscription.status === 'disabled' && !isDaily;
+  const { data: reviewStatus } = useQuery({
+    queryKey: ['android-tv-review-status', subscription.id],
+    queryFn: () => androidTvApi.getReviewStatus(subscription.id),
+    enabled: isDisabledByReview,
+    retry: false,
+    staleTime: 15_000,
+  });
+  const isReviewPending = reviewStatus?.review_pending ?? false;
 
   // For daily subs, check if balance covers daily price; otherwise 100 kopeks minimum
   const dailyPrice = subscription.daily_price_kopeks ?? 0;
@@ -206,11 +215,13 @@ export default function SubscriptionCardExpired({
         <h2 className="text-lg font-bold tracking-tight text-dark-50">
           {isLimited
             ? t('subscription.trafficLimitedTitle')
-            : isDisabledDaily
-              ? t('dashboard.suspended.title')
-              : subscription.is_trial
-                ? t('dashboard.expired.trialTitle')
-                : t('dashboard.expired.title')}
+            : isDisabledByReview
+              ? '❌ Подписка временно отключена'
+              : isDisabledDaily
+                ? t('dashboard.suspended.title')
+                : subscription.is_trial
+                  ? t('dashboard.expired.trialTitle')
+                  : t('dashboard.expired.title')}
         </h2>
       </div>
 
@@ -224,53 +235,60 @@ export default function SubscriptionCardExpired({
       {isDisabledByReview && (
         <div className="mb-4 rounded-[14px] border border-warning-500/25 bg-warning-500/10 p-4">
           <p className="text-sm font-semibold text-warning-300">
-            Подписка отключена после проверки скриншота
+            {isReviewPending
+              ? 'Скриншот проходит проверку администратором'
+              : 'Подписка отключена после проверки скриншота'}
           </p>
           <p className="mt-1 text-xs leading-5 text-dark-50/60">
-            Загрузите новый скриншот отзыва на странице Android TV, чтобы администратор включил
-            подписку снова.
+            {isReviewPending
+              ? 'Подписка будет восстановлена, когда проверка завершится.'
+              : 'Загрузите новый скриншот отзыва на странице Android TV, чтобы администратор включил подписку снова.'}
           </p>
-          <Link
-            to="/tv"
-            className="mt-3 inline-flex min-h-[40px] items-center justify-center rounded-lg bg-warning-500 px-3 py-2 text-xs font-semibold text-dark-950 transition-colors hover:bg-warning-400"
-          >
-            Перейти на Android TV
-          </Link>
+          {!isReviewPending && (
+            <Link
+              to="/tv"
+              className="mt-3 inline-flex min-h-[40px] items-center justify-center rounded-lg bg-warning-500 px-3 py-2 text-xs font-semibold text-dark-950 transition-colors hover:bg-warning-400"
+            >
+              Отправить новый скриншот
+            </Link>
+          )}
         </div>
       )}
 
       {/* Expired date + Balance row */}
-      <div
-        className="mb-5 flex items-center justify-between rounded-[14px]"
-        style={{
-          background: `rgba(${accent.r},${accent.g},${accent.b},0.04)`,
-          border: `1px solid rgba(${accent.r},${accent.g},${accent.b},0.08)`,
-          padding: '14px 18px',
-        }}
-      >
-        <div className="flex items-center">
-          <div className="mb-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-dark-50/30">
-            {isLimited
-              ? t('dashboard.expired.activeUntil')
-              : t('dashboard.expired.expiredDate', {
-                  context: subscription.is_trial ? 'trial' : '',
-                })}
+      {!isDisabledByReview && (
+        <div
+          className="mb-5 flex items-center justify-between rounded-[14px]"
+          style={{
+            background: `rgba(${accent.r},${accent.g},${accent.b},0.04)`,
+            border: `1px solid rgba(${accent.r},${accent.g},${accent.b},0.08)`,
+            padding: '14px 18px',
+          }}
+        >
+          <div className="flex items-center">
+            <div className="mb-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-dark-50/30">
+              {isLimited
+                ? t('dashboard.expired.activeUntil')
+                : t('dashboard.expired.expiredDate', {
+                    context: subscription.is_trial ? 'trial' : '',
+                  })}
+            </div>
+            <div className="ml-3 text-base font-bold tracking-tight text-dark-50/50">
+              {formattedDate}
+            </div>
           </div>
-          <div className="ml-3 text-base font-bold tracking-tight text-dark-50/50">
-            {formattedDate}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-dark-50/30">
+              {t('dashboard.expired.balance')}
+            </span>
+            <span
+              className={`text-sm font-semibold ${hasBalance ? 'text-success-400' : 'text-dark-50/30'}`}
+            >
+              {formatAmount(balanceRubles)} {currencySymbol}
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-dark-50/30">
-            {t('dashboard.expired.balance')}
-          </span>
-          <span
-            className={`text-sm font-semibold ${hasBalance ? 'text-success-400' : 'text-dark-50/30'}`}
-          >
-            {formatAmount(balanceRubles)} {currencySymbol}
-          </span>
-        </div>
-      </div>
+      )}
 
       {/* Renew error */}
       {renewError && (
@@ -283,53 +301,84 @@ export default function SubscriptionCardExpired({
       )}
 
       {/* Action buttons */}
-      <div className="flex gap-2.5">
-        {isLimited ? (
-          <Link
-            to={`/subscriptions/${subscription.id}`}
-            className="flex flex-1 items-center justify-center gap-2 rounded-[14px] py-3.5 text-[15px] font-semibold tracking-tight text-white transition-all duration-300"
-            style={{
-              background: accent.gradient,
-              boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
-            }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+      {!isDisabledByReview && (
+        <div className="flex gap-2.5">
+          {isLimited ? (
+            <Link
+              to={`/subscriptions/${subscription.id}`}
+              className="flex flex-1 items-center justify-center gap-2 rounded-[14px] py-3.5 text-[15px] font-semibold tracking-tight text-white transition-all duration-300"
+              style={{
+                background: accent.gradient,
+                boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
+              }}
             >
-              <path d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            {t('subscription.buyTraffic')}
-          </Link>
-        ) : (
-          <>
-            {/* Quick Renew or Top Up button (hidden for expired trials) */}
-            {!subscription.is_trial && (
-              <>
-                {hasBalance ? (
-                  <button
-                    type="button"
-                    onClick={handleQuickRenew}
-                    disabled={isRenewing}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-[14px] py-3.5 text-[15px] font-semibold tracking-tight text-white transition-all duration-300 disabled:opacity-50"
-                    style={{
-                      background: accent.gradient,
-                      boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
-                    }}
-                  >
-                    {isRenewing ? (
-                      <span
-                        className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
-                        aria-hidden="true"
-                      />
-                    ) : (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              {t('subscription.buyTraffic')}
+            </Link>
+          ) : (
+            <>
+              {/* Quick Renew or Top Up button (hidden for expired trials) */}
+              {!subscription.is_trial && (
+                <>
+                  {hasBalance ? (
+                    <button
+                      type="button"
+                      onClick={handleQuickRenew}
+                      disabled={isRenewing}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-[14px] py-3.5 text-[15px] font-semibold tracking-tight text-white transition-all duration-300 disabled:opacity-50"
+                      style={{
+                        background: accent.gradient,
+                        boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
+                      }}
+                    >
+                      {isRenewing ? (
+                        <span
+                          className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                      )}
+                      {isRenewing
+                        ? t('common.loading')
+                        : isDisabledDaily
+                          ? t('dashboard.suspended.resume')
+                          : t('dashboard.expired.quickRenew')}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleTopUp}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-[14px] py-3.5 text-[15px] font-semibold tracking-tight text-white transition-all duration-300"
+                      style={{
+                        background: accent.gradient,
+                        boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
+                      }}
+                    >
                       <svg
                         width="16"
                         height="16"
@@ -341,67 +390,38 @@ export default function SubscriptionCardExpired({
                         strokeLinejoin="round"
                         aria-hidden="true"
                       >
-                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        <path d="M12 4.5v15m7.5-7.5h-15" />
                       </svg>
-                    )}
-                    {isRenewing
-                      ? t('common.loading')
-                      : isDisabledDaily
-                        ? t('dashboard.suspended.resume')
-                        : t('dashboard.expired.quickRenew')}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleTopUp}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-[14px] py-3.5 text-[15px] font-semibold tracking-tight text-white transition-all duration-300"
-                    style={{
-                      background: accent.gradient,
-                      boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
-                    }}
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    {t('dashboard.expired.topUp')}
-                  </button>
-                )}
-              </>
-            )}
+                      {t('dashboard.expired.topUp')}
+                    </button>
+                  )}
+                </>
+              )}
 
-            {/* Tariffs (go to purchase page) — full-width for trials */}
-            <Link
-              to="/subscription/purchase"
-              className={`flex items-center justify-center rounded-[14px] px-5 py-3.5 text-[15px] font-semibold tracking-tight transition-colors duration-200 ${
-                subscription.is_trial ? 'flex-1 text-white' : 'text-dark-50/50'
-              }`}
-              style={
-                subscription.is_trial
-                  ? {
-                      background: accent.gradient,
-                      boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
-                    }
-                  : {
-                      background: g.innerBg,
-                      border: `1px solid ${g.innerBorder}`,
-                    }
-              }
-            >
-              {t('dashboard.expired.tariffs')}
-            </Link>
-          </>
-        )}
-      </div>
+              {/* Tariffs (go to purchase page) — full-width for trials */}
+              <Link
+                to="/subscription/purchase"
+                className={`flex items-center justify-center rounded-[14px] px-5 py-3.5 text-[15px] font-semibold tracking-tight transition-colors duration-200 ${
+                  subscription.is_trial ? 'flex-1 text-white' : 'text-dark-50/50'
+                }`}
+                style={
+                  subscription.is_trial
+                    ? {
+                        background: accent.gradient,
+                        boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
+                      }
+                    : {
+                        background: g.innerBg,
+                        border: `1px solid ${g.innerBorder}`,
+                      }
+                }
+              >
+                {t('dashboard.expired.tariffs')}
+              </Link>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

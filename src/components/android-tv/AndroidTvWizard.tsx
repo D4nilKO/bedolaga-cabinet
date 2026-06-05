@@ -21,6 +21,7 @@ type Phase =
   | 'bonus_success'
   | 'bonus_used'
   | 'repeat_sent'
+  | 'review_pending'
   | 'error';
 
 const GUIDE_MEDIA = [
@@ -272,6 +273,7 @@ interface AndroidTvWizardProps {
   standalone?: boolean;
   allowTrialActivation?: boolean;
   onDone?: () => void;
+  onReviewPending?: () => void;
 }
 
 export function AndroidTvWizard({
@@ -279,6 +281,7 @@ export function AndroidTvWizard({
   standalone = false,
   allowTrialActivation = false,
   onDone,
+  onReviewPending,
 }: AndroidTvWizardProps) {
   const queryClient = useQueryClient();
   const [code, setCode] = useState('');
@@ -330,11 +333,12 @@ export function AndroidTvWizard({
   const subscriptionLink = linkData ? resolveSubscriptionLink(linkData) : null;
   const canUploadReview = reviewStatus?.can_upload_review ?? true;
   const isDisabledReview = reviewStatus?.subscription_status === 'disabled';
+  const isReviewPending = reviewStatus?.review_pending ?? false;
   const bonusDays = reviewStatus?.bonus_days ?? 23;
   const flowStep =
     phase === 'confirm'
       ? 3
-      : phase === 'screenshot' || phase === 'screenshot_loading'
+      : phase === 'screenshot' || phase === 'screenshot_loading' || phase === 'review_pending'
         ? 4
         : phase === 'bonus_success' || phase === 'bonus_used' || phase === 'repeat_sent'
           ? 5
@@ -355,6 +359,19 @@ export function AndroidTvWizard({
     linkLoading,
     subscriptionLink,
   ]);
+
+  useEffect(() => {
+    if (!isDisabledReview) return;
+    if (phase !== 'idle' && phase !== 'error') return;
+
+    if (isReviewPending) {
+      setPhase('review_pending');
+      return;
+    }
+    if (canUploadReview) {
+      setPhase('screenshot');
+    }
+  }, [canUploadReview, isDisabledReview, isReviewPending, phase]);
 
   const handleCodeChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
@@ -481,6 +498,9 @@ export function AndroidTvWizard({
       if (result.review_status === 'repeat_sent') {
         setSelectedFile(null);
         setPhase('repeat_sent');
+        await queryClient.invalidateQueries({ queryKey: ['android-tv-review-status'] });
+        await queryClient.invalidateQueries({ queryKey: ['subscription'] });
+        await queryClient.invalidateQueries({ queryKey: ['subscriptions-list'] });
         return;
       }
       setSelectedFile(null);
@@ -498,7 +518,7 @@ export function AndroidTvWizard({
       }
       setPhase('screenshot');
     }
-  }, [refetchReviewStatus, selectedFile, subscriptionId]);
+  }, [queryClient, refetchReviewStatus, selectedFile, subscriptionId]);
 
   return (
     <div className="space-y-4">
@@ -531,7 +551,11 @@ export function AndroidTvWizard({
           <FlowStep
             n={4}
             title="Отзыв"
-            text="После подключения можно отправить скриншот отзыва."
+            text={
+              isDisabledReview
+                ? 'Отправьте новый скриншот отзыва для проверки администратором.'
+                : 'После подключения можно отправить скриншот отзыва.'
+            }
             active={flowStep === 4}
             done={flowStep > 4}
           />
@@ -713,7 +737,7 @@ export function AndroidTvWizard({
         <div className="space-y-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-5">
           <div>
             <p className="text-base font-semibold text-dark-100">
-              {isDisabledReview ? 'Подписка временно отключена' : 'Бонус за отзыв'}
+              {isDisabledReview ? '❌ Подписка временно отключена' : 'Бонус за отзыв'}
             </p>
             <p className="mt-1 text-sm text-dark-400">
               {isDisabledReview
@@ -798,12 +822,45 @@ export function AndroidTvWizard({
           <div className="text-center">
             <p className="text-base font-semibold text-success-400">Скриншот отправлен</p>
             <p className="mt-1 text-sm text-dark-400">
-              Мы получили скриншот и отправили его на проверку.
+              Скриншот проходит проверку администратором. Подписка будет восстановлена, когда
+              проверка завершится.
             </p>
           </div>
           {standalone && (
-            <Button type="button" variant="secondary" size="lg" fullWidth onClick={onDone}>
-              Готово
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onClick={onReviewPending ?? onDone}
+            >
+              В личный кабинет
+            </Button>
+          )}
+        </div>
+      )}
+
+      {phase === 'review_pending' && (
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-warning-500/20 bg-warning-500/10 p-8">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning-500/20 text-warning-300">
+            <ExclamationIcon />
+          </div>
+          <div className="text-center">
+            <p className="text-base font-semibold text-warning-300">Скриншот на проверке</p>
+            <p className="mt-1 text-sm text-dark-400">
+              Скриншот проходит проверку администратором. Подписка будет восстановлена, когда
+              проверка завершится.
+            </p>
+          </div>
+          {standalone && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onClick={onReviewPending ?? onDone}
+            >
+              В личный кабинет
             </Button>
           )}
         </div>

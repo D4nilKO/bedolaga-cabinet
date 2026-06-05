@@ -7,7 +7,7 @@ import { isValidEmail } from '@/utils/validation';
 import { markAndroidTvReturn } from '@/utils/tvReturn';
 
 type AuthMode = 'login' | 'register';
-type Step = 'auth' | 'connect' | 'done';
+type Step = 'auth' | 'connect' | 'done' | 'review_pending';
 
 function TvIcon() {
   return (
@@ -262,7 +262,12 @@ export default function TvConnect() {
         )}
 
         {step === 'connect' && (
-          <AndroidTvWizard standalone allowTrialActivation onDone={() => setStep('done')} />
+          <AndroidTvWizard
+            standalone
+            allowTrialActivation
+            onDone={() => setStep('done')}
+            onReviewPending={() => setStep('review_pending')}
+          />
         )}
 
         {step === 'done' && (
@@ -278,6 +283,26 @@ export default function TvConnect() {
               onClick={() => navigate('/')}
             >
               В главное меню
+            </Button>
+          </section>
+        )}
+
+        {step === 'review_pending' && (
+          <section className="rounded-2xl border border-warning-500/20 bg-warning-500/10 p-8 text-center">
+            <p className="text-lg font-semibold text-warning-300">Скриншот на проверке</p>
+            <p className="mt-2 text-sm text-dark-300">
+              Скриншот проходит проверку администратором. Подписка будет восстановлена, когда
+              проверка завершится.
+            </p>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              fullWidth
+              className="mt-5"
+              onClick={() => navigate('/')}
+            >
+              В личный кабинет
             </Button>
           </section>
         )}

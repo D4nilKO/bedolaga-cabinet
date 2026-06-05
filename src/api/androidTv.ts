@@ -33,6 +33,7 @@ export interface ReviewStatusResponse {
   bonus_used: boolean;
   can_upload_review: boolean;
   subscription_status: string | null;
+  review_pending: boolean;
   bonus_days: number;
 }
 
