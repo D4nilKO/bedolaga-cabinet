@@ -307,7 +307,12 @@ export function AndroidTvWizard({
     staleTime: 60_000,
   });
 
-  const { data: reviewStatus, refetch: refetchReviewStatus } = useQuery({
+  const {
+    data: reviewStatus,
+    isLoading: reviewStatusLoading,
+    error: reviewStatusError,
+    refetch: refetchReviewStatus,
+  } = useQuery({
     queryKey: ['android-tv-review-status', subscriptionId],
     queryFn: () => androidTvApi.getReviewStatus(subscriptionId),
     retry: false,
@@ -334,6 +339,7 @@ export function AndroidTvWizard({
   const canUploadReview = reviewStatus?.can_upload_review ?? true;
   const isDisabledReview = reviewStatus?.subscription_status === 'disabled';
   const isReviewPending = reviewStatus?.review_pending ?? false;
+  const isReviewRecoveryMode = isDisabledReview || isReviewPending;
   const bonusDays = reviewStatus?.bonus_days ?? 23;
   const flowStep =
     phase === 'confirm'
@@ -519,6 +525,122 @@ export function AndroidTvWizard({
       setPhase('screenshot');
     }
   }, [queryClient, refetchReviewStatus, selectedFile, subscriptionId]);
+
+  if (reviewStatusLoading && !reviewStatusError) {
+    return (
+      <div className="flex flex-col items-center gap-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-8">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-dark-600 border-t-accent-500" />
+        <p className="text-center text-sm text-dark-400">Проверяем состояние подписки...</p>
+      </div>
+    );
+  }
+
+  if (isReviewRecoveryMode) {
+    return (
+      <div className="space-y-4">
+        {phase === 'screenshot_loading' && (
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-8">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-dark-600 border-t-accent-500" />
+            <p className="text-sm text-dark-400">Проверяем скриншот...</p>
+          </div>
+        )}
+
+        {phase === 'repeat_sent' && (
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-success-500/20 bg-success-500/10 p-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-500/20 text-success-400">
+              <CheckIcon />
+            </div>
+            <div className="text-center">
+              <p className="text-base font-semibold text-success-400">Скриншот отправлен</p>
+              <p className="mt-1 text-sm text-dark-400">
+                Скриншот проходит проверку администратором. Подписка будет восстановлена, когда
+                проверка завершится.
+              </p>
+            </div>
+            {standalone && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                fullWidth
+                onClick={onReviewPending ?? onDone}
+              >
+                В личный кабинет
+              </Button>
+            )}
+          </div>
+        )}
+
+        {phase === 'review_pending' && (
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-warning-500/20 bg-warning-500/10 p-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning-500/20 text-warning-300">
+              <ExclamationIcon />
+            </div>
+            <div className="text-center">
+              <p className="text-base font-semibold text-warning-300">Скриншот на проверке</p>
+              <p className="mt-1 text-sm text-dark-400">
+                Скриншот проходит проверку администратором. Подписка будет восстановлена, когда
+                проверка завершится.
+              </p>
+            </div>
+            {standalone && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                fullWidth
+                onClick={onReviewPending ?? onDone}
+              >
+                В личный кабинет
+              </Button>
+            )}
+          </div>
+        )}
+
+        {(phase === 'screenshot' || phase === 'idle' || phase === 'error') && canUploadReview && (
+          <div className="space-y-4 rounded-2xl border border-dark-700/50 bg-dark-800/50 p-5">
+            <div>
+              <p className="text-base font-semibold text-dark-100">
+                ❌ Подписка временно отключена
+              </p>
+              <p className="mt-1 text-sm text-dark-400">Загрузите новый скриншот отзыва.</p>
+            </div>
+
+            <InfoNote>
+              На скриншоте должен быть виден ваш хороший отзыв. После загрузки скриншот отправится
+              на проверку.
+            </InfoNote>
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-dark-300 file:mr-4 file:rounded-lg file:border-0 file:bg-dark-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-dark-100"
+            />
+
+            {errorMsg && (
+              <div className="flex items-start gap-2 rounded-xl border border-error-500/20 bg-error-500/10 px-4 py-3">
+                <ExclamationIcon />
+                <p className="text-sm text-error-400">{errorMsg}</p>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              fullWidth
+              disabled={!selectedFile}
+              onClick={handleScreenshotSubmit}
+            >
+              Загрузить скриншот
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
