@@ -46,11 +46,6 @@ const GUIDE_MEDIA = [
     title: 'Не сканируйте QR-код',
   },
   {
-    src: '/android-tv-api/guide/5.jpg',
-    type: 'image',
-    title: 'После отправки проверьте профиль',
-  },
-  {
     src: '/android-tv-api/guide/6.mp4',
     type: 'video',
     title: 'Видеоинструкция',
