@@ -166,7 +166,7 @@ export default function TvConnect() {
               />
             </div>
 
-            <div className="mb-5 grid grid-cols-2 rounded-xl bg-dark-900/70 p-1">
+            <div className="mb-5 grid grid-cols-1 gap-1 rounded-xl bg-dark-900/70 p-1 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => setMode('login')}
