@@ -16,6 +16,7 @@ import SubscriptionCardActive from '../components/dashboard/SubscriptionCardActi
 import SubscriptionCardExpired from '../components/dashboard/SubscriptionCardExpired';
 import TrialOfferCard from '../components/dashboard/TrialOfferCard';
 import StatsGrid from '../components/dashboard/StatsGrid';
+import { useTrialActivation } from '../hooks/useTrialActivation';
 import { giftApi } from '../api/gift';
 import { promoApi } from '../api/promo';
 import PendingGiftCard from '../components/dashboard/PendingGiftCard';
@@ -105,21 +106,7 @@ export default function Dashboard() {
     retry: false,
   });
 
-  const activateTrialMutation = useMutation({
-    mutationFn: () => subscriptionApi.activateTrial(),
-    onSuccess: () => {
-      setTrialError(null);
-      queryClient.invalidateQueries({ queryKey: ['subscription'] });
-      queryClient.invalidateQueries({ queryKey: ['subscriptions-list'] });
-      queryClient.invalidateQueries({ queryKey: ['trial-info'] });
-      queryClient.invalidateQueries({ queryKey: ['balance'] });
-      queryClient.invalidateQueries({ queryKey: ['purchase-options'] });
-      refreshUser();
-    },
-    onError: (error: { response?: { data?: { detail?: string } } }) => {
-      setTrialError(error.response?.data?.detail || t('common.error'));
-    },
-  });
+  const activateTrialMutation = useTrialActivation(setTrialError);
 
   // Traffic refresh state and mutation
   const [trafficRefreshCooldown, setTrafficRefreshCooldown] = useState(0);

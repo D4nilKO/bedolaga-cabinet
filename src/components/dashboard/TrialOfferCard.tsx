@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { UseMutationResult } from '@tanstack/react-query';
 import type { TrialInfo } from '../../types';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useTheme } from '../../hooks/useTheme';
@@ -11,7 +10,10 @@ interface TrialOfferCardProps {
   trialInfo: TrialInfo;
   balanceKopeks: number;
   balanceRubles: number;
-  activateTrialMutation: UseMutationResult<unknown, unknown, void, unknown>;
+  activateTrialMutation: {
+    isPending: boolean;
+    mutate: () => void;
+  };
   trialError: string | null;
 }
 
