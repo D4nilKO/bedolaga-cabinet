@@ -90,6 +90,7 @@ export default function TvQuickConnect({ subscriptionUrl, isLight }: Props) {
 
         const res = await fetch(`${HAPP_TV_API}/${encodeURIComponent(clean)}`, {
           method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
           body: JSON.stringify({ data: b64 }),
           signal: ctrl.signal,
         });
