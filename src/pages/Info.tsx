@@ -10,6 +10,7 @@ import { infoPagesApi } from '../api/infoPages';
 import { promoApi, type LoyaltyTierInfo } from '../api/promo';
 import type { FaqItem, ReplacesTab } from '../api/infoPages';
 import { DocumentIcon, InfoIcon, QuestionIcon, ShieldIcon, StarIcon } from '@/components/icons';
+import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => (
   <PiCaretDown className={`h-5 w-5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -386,9 +387,9 @@ export default function Info() {
   const renderInfoPageContent = () => {
     if (infoPageLoading) {
       return (
-        <div className="flex justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-        </div>
+        <SkeletonGroup className="space-y-3">
+          <Skeleton variant="card" count={3} className="h-16" />
+        </SkeletonGroup>
       );
     }
 
@@ -423,9 +424,9 @@ export default function Info() {
     // Show spinner while tab replacements are loading (prevents flash of wrong content)
     if (!replacementsLoaded) {
       return (
-        <div className="flex justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-        </div>
+        <SkeletonGroup className="space-y-3">
+          <Skeleton variant="card" count={3} className="h-16" />
+        </SkeletonGroup>
       );
     }
 
@@ -437,9 +438,9 @@ export default function Info() {
     if (activeTab === 'faq') {
       if (faqLoading) {
         return (
-          <div className="flex justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-          </div>
+          <SkeletonGroup className="space-y-3">
+            <Skeleton variant="card" count={3} className="h-16" />
+          </SkeletonGroup>
         );
       }
 
@@ -453,9 +454,9 @@ export default function Info() {
             <div key={faq.id} className="bento-card overflow-hidden p-0">
               <button
                 onClick={() => toggleFaq(faq.id)}
-                className="flex min-h-[52px] w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-dark-800/50"
+                className="flex min-h-[52px] w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-dark-800/50"
               >
-                <span className="font-medium">{faq.title}</span>
+                <span className="min-w-0 font-medium">{faq.title}</span>
                 <ChevronIcon expanded={expandedFaq === faq.id} />
               </button>
               {expandedFaq === faq.id && (
@@ -472,9 +473,9 @@ export default function Info() {
     if (activeTab === 'rules') {
       if (rulesLoading) {
         return (
-          <div className="flex justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-          </div>
+          <SkeletonGroup className="space-y-3">
+            <Skeleton variant="card" count={3} className="h-16" />
+          </SkeletonGroup>
         );
       }
 
@@ -500,9 +501,9 @@ export default function Info() {
     if (activeTab === 'privacy') {
       if (privacyLoading) {
         return (
-          <div className="flex justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-          </div>
+          <SkeletonGroup className="space-y-3">
+            <Skeleton variant="card" count={3} className="h-16" />
+          </SkeletonGroup>
         );
       }
 
@@ -528,9 +529,9 @@ export default function Info() {
     if (activeTab === 'offer') {
       if (offerLoading) {
         return (
-          <div className="flex justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-          </div>
+          <SkeletonGroup className="space-y-3">
+            <Skeleton variant="card" count={3} className="h-16" />
+          </SkeletonGroup>
         );
       }
 
@@ -556,9 +557,9 @@ export default function Info() {
     if (activeTab === 'loyalty') {
       if (loyaltyLoading) {
         return (
-          <div className="flex justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-          </div>
+          <SkeletonGroup className="space-y-3">
+            <Skeleton variant="card" count={3} className="h-16" />
+          </SkeletonGroup>
         );
       }
 
@@ -674,10 +675,12 @@ export default function Info() {
                       : 'opacity-70'
                 }`}
               >
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                {/* Левая группа сжимается, плашка статуса — нет: раньше она уходила
+                    за карточку, а название уровня обрезалось. */}
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
                     <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                         tier.is_current
                           ? 'bg-accent-500/20 text-accent-400'
                           : tier.is_achieved
@@ -688,7 +691,9 @@ export default function Info() {
                       <StarIcon />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="truncate font-semibold text-dark-50">{tier.name}</h4>
+                      <h4 className="font-semibold text-dark-50 [overflow-wrap:anywhere]">
+                        {tier.name}
+                      </h4>
                       <p className="text-xs text-dark-400">
                         {t('info.threshold')}: {formatCurrency(tier.threshold_rubles)}
                       </p>

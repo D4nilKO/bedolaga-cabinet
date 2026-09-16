@@ -13,6 +13,7 @@ import { useHapticFeedback } from '../platform/hooks/useHaptic';
 import { useDestructiveConfirm } from '../platform/hooks/useNativeDialog';
 import { cn } from '../lib/utils';
 import { ChevronDownIcon, ChevronUpIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 
 type LegalTab = 'privacy' | 'offer' | 'recurrent' | 'rules' | 'faq';
 
@@ -259,7 +260,11 @@ function DocumentEditor({
   });
 
   if (isLoading || !data) {
-    return <div className="skeleton h-64 w-full rounded-xl" />;
+    return (
+      <SkeletonGroup>
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </SkeletonGroup>
+    );
   }
 
   const languages = data.items.map((item) => item.language);
@@ -371,7 +376,11 @@ function RulesEditor({ onDirtyChange }: { onDirtyChange: (dirty: boolean) => voi
   });
 
   if (isLoading || !data) {
-    return <div className="skeleton h-64 w-full rounded-xl" />;
+    return (
+      <SkeletonGroup>
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </SkeletonGroup>
+    );
   }
 
   const languages = data.items.map((item) => item.language);
@@ -459,14 +468,14 @@ function FaqQuestionRow({
 
   return (
     <div className="space-y-3 rounded-xl border border-dark-700 bg-dark-800/50 p-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <input
           value={title}
           onChange={(e) => {
             setSaveError(null);
             setTitle(e.target.value);
           }}
-          className="input flex-1"
+          className="input min-w-0 flex-1 basis-full sm:basis-0"
           placeholder={t('admin.legalPages.questionTitle')}
         />
         <Toggle
@@ -638,7 +647,11 @@ function FaqEditor({ onDirtyChange }: { onDirtyChange: (dirty: boolean) => void 
   });
 
   if (isLoading || !data) {
-    return <div className="skeleton h-64 w-full rounded-xl" />;
+    return (
+      <SkeletonGroup>
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </SkeletonGroup>
+    );
   }
 
   const languages = data.settings.map((s) => s.language);
@@ -734,7 +747,7 @@ export default function AdminLegalPages() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <AdminBackButton to="/admin/info-pages" />
+        <AdminBackButton to="/admin" />
         <div>
           <h1 className="text-xl font-bold text-dark-100">{t('admin.legalPages.title')}</h1>
           <p className="text-sm text-dark-400">{t('admin.legalPages.subtitle')}</p>

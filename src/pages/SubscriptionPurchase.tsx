@@ -13,6 +13,7 @@ import { TariffPurchaseForm } from '../components/subscription/purchase/TariffPu
 import { TariffPickerGrid } from '../components/subscription/purchase/TariffPickerGrid';
 import { ClassicPurchaseWizard } from '../components/subscription/purchase/ClassicPurchaseWizard';
 import { ExclamationIcon, SparklesIcon } from '@/components/icons';
+import { PageSkeleton, Skeleton } from '@/components/ui/skeleton';
 
 export default function SubscriptionPurchase() {
   const { t } = useTranslation();
@@ -99,9 +100,10 @@ export default function SubscriptionPurchase() {
 
   if (isLoading || optionsLoading) {
     return (
-      <div className="flex min-h-64 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-      </div>
+      <PageSkeleton leading={1} titleWidth="w-56">
+        <Skeleton variant="card" className="h-32" />
+        <Skeleton variant="card" count={2} className="h-40" />
+      </PageSkeleton>
     );
   }
 
@@ -192,7 +194,7 @@ export default function SubscriptionPurchase() {
                     >
                       {t('subscription.trialUpgrade.title')}
                     </div>
-                    <div className="mt-1 text-[12px] text-dark-50/40">
+                    <div className="mt-1 text-[12px] text-dark-400">
                       {t('subscription.trialUpgrade.description')}
                     </div>
                   </div>
@@ -229,7 +231,7 @@ export default function SubscriptionPurchase() {
                     >
                       {t('subscription.expiredBanner.title')}
                     </div>
-                    <div className="mt-1 text-[12px] text-dark-50/40">
+                    <div className="mt-1 text-[12px] text-dark-400">
                       {t('subscription.expiredBanner.selectTariff')}
                     </div>
                   </div>
@@ -291,6 +293,12 @@ export default function SubscriptionPurchase() {
                   purchaseOptions !== undefined &&
                   'platega_recurrent_enabled' in purchaseOptions &&
                   purchaseOptions.platega_recurrent_enabled === true
+                }
+                lavaPurchaseEnabled={
+                  isTariffsMode &&
+                  purchaseOptions !== undefined &&
+                  'lava_recurrent_enabled' in purchaseOptions &&
+                  purchaseOptions.lava_recurrent_enabled === true
                 }
                 onBack={() => {
                   setShowTariffPurchase(false);

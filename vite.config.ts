@@ -1,30 +1,32 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+import path from 'node:path';
 import packageJson from './package.json';
+import { brandingHtml } from './vite-plugins/brandingHtml';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  // Переменные из .env и из окружения сборки (Docker передаёт их через ENV);
+  // окружение сильнее файла — как и у самого Vite.
+  const env = { ...loadEnv(mode, __dirname, ''), ...process.env };
   const proxyTarget = env.PROXY_TARGET || 'http://localhost:8080';
   const isRemote = Boolean(env.PROXY_TARGET);
   const androidTvProxyTarget = env.ANDROID_TV_BOT_API_URL || 'http://localhost:8090';
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      brandingHtml({
+        name: env.VITE_APP_NAME ?? '',
+        apiUrl: env.VITE_API_URL ?? '',
+      }),
+    ],
     define: {
       __APP_VERSION__: JSON.stringify(packageJson.version),
     },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
-      },
-      // The backend serves its liveness endpoint at the host root (not under
-      // /api). Proxy it too so the "service unavailable" detection probe hits the
-      // real backend in dev instead of the Vite server (which would mask outages).
-      '/health': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
       },
     },
     // Base path - use '/' for standalone Docker deployment
@@ -47,6 +49,13 @@ export default defineConfig(({ mode }) => {
           target: androidTvProxyTarget,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/android-tv-api/, ''),
+        },
+        // The backend serves its liveness endpoint at the host root (not under
+        // /api). Proxy it too so the "service unavailable" detection probe hits the
+        // real backend in dev instead of the Vite server (which would mask outages).
+        '/health': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
         },
       },
     },

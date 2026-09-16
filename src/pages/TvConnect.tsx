@@ -5,6 +5,7 @@ import { AndroidTvWizard } from '@/components/android-tv/AndroidTvWizard';
 import { Button } from '@/components/primitives/Button';
 import { isValidEmail } from '@/utils/validation';
 import { markAndroidTvReturn } from '@/utils/tvReturn';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 type AuthMode = 'login' | 'register';
 type Step = 'auth' | 'connect' | 'done' | 'review_pending';
@@ -28,9 +29,7 @@ function TvIcon() {
 }
 
 function extractError(error: unknown, fallback: string): string {
-  return (
-    (error as { response?: { data?: { detail?: string } } }).response?.data?.detail || fallback
-  );
+  return getApiErrorMessage(error, fallback);
 }
 
 function OnboardingStep({ n, title, text }: { n: number; title: string; text: string }) {

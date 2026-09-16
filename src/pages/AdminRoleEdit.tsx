@@ -2,9 +2,15 @@ import { useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { rbacApi, PermissionSection, CreateRolePayload, UpdateRolePayload } from '@/api/rbac';
+import {
+  rbacApi,
+  type PermissionSection,
+  type CreateRolePayload,
+  type UpdateRolePayload,
+} from '@/api/rbac';
 import { AdminBackButton } from '@/components/admin';
 import { ChevronDownIcon } from '@/components/icons';
+import { PageSkeleton, Skeleton } from '@/components/ui/skeleton';
 
 // === Constants ===
 
@@ -160,12 +166,12 @@ function PermissionMatrix({
                 <button
                   type="button"
                   onClick={() => toggleExpand(section.section)}
-                  className="flex flex-1 items-center justify-between"
+                  className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
                 >
-                  <span className="text-sm font-medium text-dark-200">
+                  <span className="min-w-0 text-sm font-medium text-dark-200 [overflow-wrap:anywhere]">
                     {t(`admin.roles.form.permissionSections.${section.section}`, section.section)}
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     <span className="text-xs text-dark-500">
                       {section.actions.filter((a) => isPermSelected(section.section, a)).length}/
                       {section.actions.length}
@@ -352,9 +358,9 @@ export default function AdminRoleEdit() {
   // Loading state
   if (isEdit && isLoadingRole) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-      </div>
+      <PageSkeleton variant="admin" leading={1} titleWidth="w-56" className="space-y-6">
+        <Skeleton variant="card" className="h-96" />
+      </PageSkeleton>
     );
   }
 
@@ -423,7 +429,7 @@ export default function AdminRoleEdit() {
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, level: Number(e.target.value) }))
                   }
-                  className="flex-1 accent-accent-500"
+                  className="min-w-0 flex-1 accent-accent-500"
                 />
                 <input
                   type="number"

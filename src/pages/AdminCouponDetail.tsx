@@ -20,6 +20,7 @@ import {
   TicketIcon,
 } from '@/components/icons';
 import { StatCard } from '../components/stats';
+import { PageSkeleton, Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminCouponDetail() {
   const { t } = useTranslation();
@@ -31,6 +32,7 @@ export default function AdminCouponDetail() {
 
   const batchId = Number(id);
   const [revokeConfirm, setRevokeConfirm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const { data: batch, isLoading } = useQuery({
@@ -70,6 +72,28 @@ export default function AdminCouponDetail() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => couponsApi.deleteBatch(batchId),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-coupon-batches'] });
+      setDeleteConfirm(false);
+      showToast({
+        type: 'success',
+        title: t('admin.coupons.delete.success', { count: result.deleted_coupons }),
+        message: '',
+      });
+      navigate('/admin/coupons', { replace: true });
+    },
+    onError: (err) => {
+      setDeleteConfirm(false);
+      showToast({
+        type: 'error',
+        title: t('admin.coupons.errors.deleteFailed'),
+        message: getApiErrorMessage(err, ''),
+      });
+    },
+  });
+
   const handleCopyAll = () => {
     if (!links) return;
     void copyToClipboard(links.links.join('\n'));
@@ -90,9 +114,19 @@ export default function AdminCouponDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-      </div>
+      <PageSkeleton
+        variant="admin"
+        leading={1}
+        titleWidth="w-56"
+        className="mx-auto max-w-2xl space-y-6"
+      >
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2">
+          <StatCard loading />
+          <StatCard loading />
+          <StatCard loading />
+        </div>
+        <Skeleton variant="card" count={2} className="h-40" />
+      </PageSkeleton>
     );
   }
 
@@ -111,7 +145,7 @@ export default function AdminCouponDetail() {
         {!capabilities.hasBackButton && (
           <button
             onClick={() => navigate('/admin/coupons')}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-dark-700 bg-dark-800 transition-colors hover:border-dark-600"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-dark-700 bg-dark-800 transition-colors hover:border-dark-600"
           >
             <BackIcon />
           </button>
@@ -132,7 +166,7 @@ export default function AdminCouponDetail() {
       </div>
 
       {/* Stats */}
-      <div className="mb-6 grid grid-cols-3 gap-3">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2">
         <StatCard
           label={t('admin.coupons.stats.active')}
           value={batch.active_count}
@@ -167,6 +201,12 @@ export default function AdminCouponDetail() {
               {t('admin.coupons.detail.priceTotal')}{' '}
               {formatPrice(batch.wholesale_price_kopeks * batch.coupons_total, i18n.language)}
             </span>
+          </div>
+        )}
+        {batch.max_per_user > 0 && (
+          <div className="flex justify-between gap-4">
+            <span className="text-dark-400">{t('admin.coupons.detail.maxPerUser')}</span>
+            <span className="text-dark-100">{batch.max_per_user}</span>
           </div>
         )}
         <div className="flex justify-between gap-4">
@@ -216,16 +256,62 @@ export default function AdminCouponDetail() {
         </div>
       )}
 
-      {/* Revoke */}
-      {hasActive && (
+      {/* Кнопки стояли вплотную друг к другу — теперь с зазором. */}
+      <div className="space-y-3">
+        {/* Revoke */}
+        {hasActive && (
+          <PermissionGate permission="coupons:edit" fallback={null}>
+            <button
+              onClick={() => setRevokeConfirm(true)}
+              className="w-full rounded-lg border border-error-500/30 bg-error-500/10 px-4 py-2.5 text-error-400 transition-colors hover:bg-error-500/20"
+            >
+              {t('admin.coupons.revoke.button', { count: batch.active_count })}
+            </button>
+          </PermissionGate>
+        )}
+
+        {/* Delete — полностью убирает партию, в отличие от отзыва */}
         <PermissionGate permission="coupons:edit" fallback={null}>
           <button
-            onClick={() => setRevokeConfirm(true)}
-            className="w-full rounded-lg border border-error-500/30 bg-error-500/10 px-4 py-2.5 text-error-400 transition-colors hover:bg-error-500/20"
+            onClick={() => setDeleteConfirm(true)}
+            className="w-full rounded-lg border border-error-500/30 px-4 py-2.5 text-error-400 transition-colors hover:bg-error-500/20"
           >
-            {t('admin.coupons.revoke.button', { count: batch.active_count })}
+            {t('admin.coupons.delete.button')}
           </button>
         </PermissionGate>
+      </div>
+
+      {/* Delete confirmation */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-950/70 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-dark-800 p-6">
+            <h3 className="mb-2 text-lg font-semibold text-dark-100">
+              {t('admin.coupons.delete.confirmTitle')}
+            </h3>
+            <p className="mb-2 text-dark-400">
+              {t('admin.coupons.delete.confirmText', { count: batch.coupons_total })}
+            </p>
+            {batch.redeemed_count > 0 && (
+              <p className="mb-4 text-sm text-warning-400">
+                {t('admin.coupons.delete.redeemedWarning', { count: batch.redeemed_count })}
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(false)} className="btn-secondary flex-1">
+                {t('admin.coupons.revoke.cancel')}
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className={`flex-1 rounded-lg bg-error-500 px-4 py-2 text-white transition-colors hover:bg-error-600 ${
+                  deleteMutation.isPending ? 'cursor-not-allowed opacity-50' : ''
+                }`}
+              >
+                {t('admin.coupons.delete.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Revoke confirmation */}

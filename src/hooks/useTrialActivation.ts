@@ -5,6 +5,7 @@ import { androidTvApi } from '@/api/androidTv';
 import { subscriptionApi } from '@/api/subscription';
 import { useAuthStore } from '@/store/auth';
 import { clearPendingAndroidTvTrial, hasPendingAndroidTvTrial } from '@/utils/tvReturn';
+import { getApiErrorMessage } from '@/utils/api-error';
 
 type TrialActivationResult = { kind: 'android-tv' } | { kind: 'standard' };
 
@@ -39,8 +40,8 @@ export function useTrialActivation(setTrialError: (message: string | null) => vo
         navigate('/tv', { replace: true });
       }
     },
-    onError: (error: { response?: { data?: { detail?: string } } }) => {
-      setTrialError(error.response?.data?.detail || t('common.error'));
+    onError: (error: unknown) => {
+      setTrialError(getApiErrorMessage(error, t('common.error')));
     },
   });
 }

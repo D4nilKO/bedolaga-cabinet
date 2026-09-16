@@ -7,6 +7,7 @@ import { useShallow } from 'zustand/shallow';
 import { consumeCampaignSlug, getPendingCampaignSlug } from '../utils/campaign';
 import { tokenStorage } from '../utils/token';
 import { consumeAndroidTvReturn } from '../utils/tvReturn';
+import { getApiErrorMessage } from '../utils/api-error';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function VerifyEmail() {
@@ -58,8 +59,7 @@ export default function VerifyEmail() {
         redirectTimer = setTimeout(() => navigate(redirectTo, { replace: true }), 800);
       } catch (err: unknown) {
         setStatus('error');
-        const error = err as { response?: { data?: { detail?: string } } };
-        setError(error.response?.data?.detail || t('emailVerification.failed'));
+        setError(getApiErrorMessage(err, t('emailVerification.failed')));
       }
     };
 

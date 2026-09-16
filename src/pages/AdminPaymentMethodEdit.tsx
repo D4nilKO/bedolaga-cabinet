@@ -13,6 +13,7 @@ import { createNumberInputHandler, toNumber } from '../utils/inputHelpers';
 import { localeMap } from '../utils/withdrawalUtils';
 import { PermissionGate } from '@/components/auth/PermissionGate';
 import { BackIcon, CheckIcon, SaveIcon } from '@/components/icons';
+import { PageSkeleton, Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 
 function extractErrorDetail(err: unknown): string | null {
   const error = err as { response?: { data?: { detail?: unknown } } };
@@ -106,7 +107,9 @@ function OverpayCertificateSection() {
       </h3>
 
       {isLoading ? (
-        <div className="skeleton h-10 w-full rounded-xl" />
+        <SkeletonGroup>
+          <Skeleton className="h-10 w-full rounded-xl" />
+        </SkeletonGroup>
       ) : certStatus ? (
         <div>
           {certStatus.valid ? (
@@ -359,9 +362,9 @@ export default function AdminPaymentMethodEdit() {
 
   if (isLoading) {
     return (
-      <div className="min-h-viewport flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
-      </div>
+      <PageSkeleton variant="admin" leading={1} titleWidth="w-56" className="space-y-6">
+        <Skeleton variant="card" className="h-96" />
+      </PageSkeleton>
     );
   }
 
@@ -373,7 +376,7 @@ export default function AdminPaymentMethodEdit() {
           {!capabilities.hasBackButton && (
             <button
               onClick={() => navigate('/admin/payment-methods')}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-dark-700 bg-dark-800 transition-colors hover:border-dark-600"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-dark-700 bg-dark-800 transition-colors hover:border-dark-600"
             >
               <BackIcon />
             </button>
@@ -396,13 +399,15 @@ export default function AdminPaymentMethodEdit() {
         {!capabilities.hasBackButton && (
           <button
             onClick={() => navigate('/admin/payment-methods')}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-dark-700 bg-dark-800 transition-colors hover:border-dark-600"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-dark-700 bg-dark-800 transition-colors hover:border-dark-600"
           >
             <BackIcon />
           </button>
         )}
-        <div>
-          <h1 className="text-2xl font-bold text-dark-50">{displayName}</h1>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-dark-50 [overflow-wrap:anywhere]">
+            {displayName}
+          </h1>
           <p className="text-sm text-dark-500">
             {METHOD_LABELS[config.method_id] || config.method_id}
           </p>
@@ -522,7 +527,7 @@ export default function AdminPaymentMethodEdit() {
                   >
                     <span className="text-sm">{opt.name}</span>
                     <div
-                      className={`flex h-5 w-5 items-center justify-center rounded ${
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
                         enabled
                           ? 'bg-accent-500 text-on-accent'
                           : 'border border-dark-600 bg-dark-700'
@@ -579,7 +584,10 @@ export default function AdminPaymentMethodEdit() {
                   aria-label={t('admin.paymentMethods.quickAmountsRemove', { value })}
                   className="flex items-center gap-1.5 rounded-xl border border-accent-500/30 bg-accent-500/10 px-3 py-1.5 text-sm font-medium text-accent-300 transition-colors hover:border-error-500/40 hover:bg-error-500/10 hover:text-error-400"
                 >
-                  <span>{value} ₽</span>
+                  <span>
+                    {value}
+                    {'\u00A0'}₽
+                  </span>
                   <span className="text-base leading-none">×</span>
                 </button>
               ))}
@@ -598,7 +606,7 @@ export default function AdminPaymentMethodEdit() {
                 }
               }}
               placeholder={t('admin.paymentMethods.quickAmountsPlaceholder')}
-              className="input flex-1"
+              className="input min-w-0 flex-1"
             />
             <button type="button" onClick={addQuickAmount} className="btn-secondary shrink-0">
               {t('admin.paymentMethods.quickAmountsAdd')}

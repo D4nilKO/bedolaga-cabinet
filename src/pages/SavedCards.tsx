@@ -15,6 +15,7 @@ import { Card } from '@/components/data-display/Card';
 import { Button } from '@/components/primitives/Button';
 import { BackIcon } from '@/components/icons';
 import { staggerContainer, staggerItem } from '@/components/motion/transitions';
+import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 
 function formatCardDate(dateStr: string): string {
   try {
@@ -104,13 +105,26 @@ export default function SavedCards() {
   });
   const nonTrialSubs = (subscriptionsData?.subscriptions ?? []).filter((sub) => !sub.is_trial);
 
-  const sbpQueries = useQueries({
-    queries: nonTrialSubs.map((sub) => ({
+  // Опций покупки здесь нет, поэтому фичу проверяем пробой: спрашиваем первую
+  // подписку, а остальные — только если ответ пришёл. Выключенная автооплата
+  // отвечает 403, и без пробы браузер печатал бы красную строку с полным стеком
+  // на КАЖДУЮ подписку человека.
+  const probeSub = nonTrialSubs[0];
+  const probeQuery = useQuery({
+    queryKey: ['sbp-recurring', probeSub?.id],
+    queryFn: () => subscriptionApi.getSbpRecurring(probeSub.id),
+    enabled: !!probeSub,
+    retry: false,
+  });
+  const restQueries = useQueries({
+    queries: nonTrialSubs.slice(1).map((sub) => ({
       queryKey: ['sbp-recurring', sub.id],
       queryFn: () => subscriptionApi.getSbpRecurring(sub.id),
+      enabled: probeQuery.isSuccess,
       retry: false,
     })),
   });
+  const sbpQueries = [probeQuery, ...restQueries];
 
   // No section at all when nothing is bound: either the feature is off
   // (every query 403s) or none of the subscriptions has an active binding.
@@ -183,23 +197,23 @@ export default function SavedCards() {
       {isLoading && (
         <motion.div variants={staggerItem}>
           <Card>
-            <div className="space-y-3">
+            <SkeletonGroup className="space-y-3">
               {[1, 2].map((i) => (
                 <div
                   key={i}
                   className="flex items-center justify-between rounded-linear border border-dark-700/30 bg-dark-800/30 p-4"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-6 w-6 animate-pulse rounded bg-dark-700" />
+                    <Skeleton className="h-6 w-6 shrink-0" />
                     <div className="space-y-2">
-                      <div className="h-4 w-32 animate-pulse rounded bg-dark-700" />
-                      <div className="h-3 w-24 animate-pulse rounded bg-dark-700" />
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
                     </div>
                   </div>
-                  <div className="h-8 w-20 animate-pulse rounded bg-dark-700" />
+                  <Skeleton className="h-8 w-20 shrink-0" />
                 </div>
               ))}
-            </div>
+            </SkeletonGroup>
           </Card>
         </motion.div>
       )}
@@ -223,12 +237,12 @@ export default function SavedCards() {
               {savedCards.map((card) => (
                 <div
                   key={card.id}
-                  className="flex items-center justify-between rounded-linear border border-dark-700/30 bg-dark-800/30 p-4"
+                  className="flex items-center justify-between gap-3 rounded-linear border border-dark-700/30 bg-dark-800/30 p-4"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">💳</span>
-                    <div>
-                      <div className="font-medium text-dark-100">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="shrink-0 text-xl">💳</span>
+                    <div className="min-w-0">
+                      <div className="font-medium text-dark-100 [overflow-wrap:anywhere]">
                         {card.title ||
                           `${card.card_type || t('balance.savedCards.card')} ${card.card_last4 ? `*${card.card_last4}` : ''}`}
                       </div>
@@ -244,7 +258,7 @@ export default function SavedCards() {
                     size="sm"
                     onClick={() => handleDeleteCard(card.id)}
                     loading={deletingCardId === card.id}
-                    className="text-error-400 hover:text-error-300"
+                    className="shrink-0 text-error-400 hover:text-error-300"
                   >
                     {t('balance.savedCards.unlink')}
                   </Button>
@@ -283,11 +297,13 @@ export default function SavedCards() {
                 return (
                   <div
                     key={sub.id}
-                    className="flex items-center justify-between rounded-linear border border-dark-700/30 bg-dark-800/30 p-4"
+                    // Кнопка с длинной подписью на телефоне — под текстом: рядом
+                    // она сжималась в три строки и вываливалась из своей рамки.
+                    className="flex flex-col gap-3 rounded-linear border border-dark-700/30 bg-dark-800/30 p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">🔁</span>
-                      <div>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="shrink-0 text-xl">🔁</span>
+                      <div className="min-w-0">
                         <div className="font-medium text-dark-100">
                           {sub.tariff_name || `#${sub.id}`}
                         </div>
@@ -311,7 +327,7 @@ export default function SavedCards() {
                       size="sm"
                       onClick={() => handleUnlinkSbp(sub.id)}
                       loading={unlinkingSubId === sub.id}
-                      className="text-error-400 hover:text-error-300"
+                      className="shrink-0 self-start whitespace-nowrap text-error-400 hover:text-error-300 sm:self-auto"
                     >
                       {t('balance.savedCards.sbpUnlink')}
                     </Button>

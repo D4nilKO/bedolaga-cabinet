@@ -5,19 +5,19 @@ const TV_PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 function getPendingTimestamp(key: string): number | null {
   if (typeof window === 'undefined') return null;
 
-  const raw = localStorage.getItem(key);
+  const raw = safeLocal.getItem(key);
   if (!raw) return null;
 
   if (raw === '1') return Date.now();
 
   const timestamp = Number(raw);
   if (!Number.isFinite(timestamp)) {
-    localStorage.removeItem(key);
+    safeLocal.removeItem(key);
     return null;
   }
 
   if (Date.now() - timestamp > TV_PENDING_TTL_MS) {
-    localStorage.removeItem(key);
+    safeLocal.removeItem(key);
     return null;
   }
 
@@ -26,7 +26,7 @@ function getPendingTimestamp(key: string): number | null {
 
 function setPending(key: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(key, String(Date.now()));
+  safeLocal.setItem(key, String(Date.now()));
 }
 
 export function markAndroidTvReturn(): void {
@@ -38,7 +38,7 @@ export function consumeAndroidTvReturn(): boolean {
   if (typeof window === 'undefined') return false;
   const pending = getPendingTimestamp(TV_RETURN_KEY) !== null;
   if (pending) {
-    localStorage.removeItem(TV_RETURN_KEY);
+    safeLocal.removeItem(TV_RETURN_KEY);
   }
   return pending;
 }
@@ -49,5 +49,6 @@ export function hasPendingAndroidTvTrial(): boolean {
 
 export function clearPendingAndroidTvTrial(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(TV_TRIAL_KEY);
+  safeLocal.removeItem(TV_TRIAL_KEY);
 }
+import { safeLocal } from './safeStorage';
