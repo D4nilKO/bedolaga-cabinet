@@ -129,16 +129,27 @@ export default function TvConnect() {
   return (
     <main className="min-h-screen bg-dark-950 px-4 py-6 text-dark-100 sm:px-6">
       <div className="mx-auto max-w-xl">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-500/15 text-accent-400">
-            <TvIcon />
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-500/15 text-accent-400">
+              <TvIcon />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-dark-50">Подключение Android TV</h1>
+              <p className="mt-1 text-sm text-dark-400">
+                Держите приставку рядом: код появится в HAPP на экране телевизора.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-dark-50">Подключение Android TV</h1>
-            <p className="mt-1 text-sm text-dark-400">
-              Держите приставку рядом: код появится в HAPP на экране телевизора.
-            </p>
-          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="w-full sm:w-auto"
+            onClick={() => navigate('/')}
+          >
+            Перейти в личный кабинет
+          </Button>
         </div>
 
         {step === 'auth' && (
