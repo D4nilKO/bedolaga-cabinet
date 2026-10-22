@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { useAuthStore } from '@/store/auth';
+import { infoApi } from '@/api/info';
 import { AndroidTvWizard } from '@/components/android-tv/AndroidTvWizard';
+import LegalConsent from '@/components/LegalConsent';
 import { Button } from '@/components/primitives/Button';
+import { useLegalConsentGate } from '@/hooks/useLegalConsentGate';
 import { isValidEmail } from '@/utils/validation';
 import { markAndroidTvReturn } from '@/utils/tvReturn';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { TvIcon } from '@/components/icons';
+import type { LegalConsentConfig } from '@/types';
 
 type AuthMode = 'login' | 'register';
 type Step = 'auth' | 'connect' | 'done' | 'review_pending';
@@ -46,6 +51,14 @@ export default function TvConnect() {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const { data: legalConsent } = useQuery<LegalConsentConfig>({
+    queryKey: ['legal-consent-config', 'ru'],
+    queryFn: () => infoApi.getLegalConsentConfig('ru'),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const consent = useLegalConsentGate(legalConsent);
+
   useEffect(() => {
     if (isAuthenticated) setStep('connect');
   }, [isAuthenticated]);
@@ -78,7 +91,13 @@ export default function TvConnect() {
         }
 
         markAndroidTvReturn();
-        const result = await registerWithEmail(email, password, firstName || undefined);
+        const result = await registerWithEmail(
+          email,
+          password,
+          firstName || undefined,
+          undefined,
+          consent.acceptedKeys,
+        );
         if (result.requires_verification) {
           setNotice(
             `Мы отправили письмо для подтверждения на ${result.email}. После подтверждения вы вернётесь к подключению Android TV.`,
@@ -97,7 +116,16 @@ export default function TvConnect() {
         setLoading(false);
       }
     },
-    [confirmPassword, email, firstName, loginWithEmail, mode, password, registerWithEmail],
+    [
+      confirmPassword,
+      consent.acceptedKeys,
+      email,
+      firstName,
+      loginWithEmail,
+      mode,
+      password,
+      registerWithEmail,
+    ],
   );
 
   if (isAuthLoading) {
@@ -198,6 +226,15 @@ export default function TvConnect() {
                 </label>
               )}
 
+              {mode === 'register' && (
+                <LegalConsent
+                  documents={consent.documents}
+                  accepted={consent.accepted}
+                  onChange={consent.toggle}
+                  disabled={loading}
+                />
+              )}
+
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-dark-300">Email</span>
                 <input
@@ -247,7 +284,14 @@ export default function TvConnect() {
                 </div>
               )}
 
-              <Button type="submit" variant="primary" size="lg" fullWidth loading={loading}>
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                fullWidth
+                loading={loading}
+                disabled={mode === 'register' && !consent.allAccepted}
+              >
                 {mode === 'login' ? 'Войти' : 'Создать аккаунт'}
               </Button>
             </form>
