@@ -6,27 +6,10 @@ import { Button } from '@/components/primitives/Button';
 import { isValidEmail } from '@/utils/validation';
 import { markAndroidTvReturn } from '@/utils/tvReturn';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { TvIcon } from '@/components/icons';
 
 type AuthMode = 'login' | 'register';
 type Step = 'auth' | 'connect' | 'done' | 'review_pending';
-
-function TvIcon() {
-  return (
-    <svg
-      className="h-7 w-7"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={1.5}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z"
-      />
-    </svg>
-  );
-}
 
 function extractError(error: unknown, fallback: string): string {
   return getApiErrorMessage(error, fallback);
@@ -131,7 +114,7 @@ export default function TvConnect() {
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-500/15 text-accent-400">
-              <TvIcon />
+              <TvIcon className="h-7 w-7" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-dark-50">Подключение Android TV</h1>

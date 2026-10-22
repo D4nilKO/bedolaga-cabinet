@@ -11,6 +11,7 @@ import {
   showPopup,
   setMiniAppHeaderColor,
   setMiniAppBottomBarColor,
+  setMiniAppBackgroundColor,
   themeParamsState,
   getCloudStorageItem,
   setCloudStorageItem,
@@ -23,6 +24,7 @@ import {
   enableClosingConfirmation,
   disableClosingConfirmation,
   hideKeyboard,
+  downloadFile,
 } from '@telegram-apps/sdk-react';
 import type {
   PlatformContext,
@@ -207,6 +209,13 @@ function createThemeController(): ThemeController {
       } catch {}
     },
 
+    setBackgroundColor(color: string) {
+      if (!inTelegram) return;
+      try {
+        setMiniAppBackgroundColor(color as `#${string}`);
+      } catch {}
+    },
+
     getThemeParams() {
       if (!inTelegram) return null;
       try {
@@ -329,6 +338,15 @@ export function createTelegramAdapter(): PlatformContext {
           disableClosingConfirmation();
         }
       } catch {}
+    },
+
+    async downloadFile(url: string, fileName: string) {
+      if (downloadFile.isAvailable()) {
+        await downloadFile(url, fileName);
+        return;
+      }
+      // Клиент старше Bot API 8.0: ссылка уходит во внешний браузер, файл придёт вложением.
+      openLink(url);
     },
 
     hideKeyboard() {

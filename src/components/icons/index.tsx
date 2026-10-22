@@ -40,6 +40,7 @@ import {
   PiStarFill,
   PiStop,
   PiSun,
+  PiTelevision,
   PiTrash,
   PiUploadSimple,
   PiUser,
@@ -73,6 +74,10 @@ interface IconProps {
 // Navigation & Layout
 export const HomeIcon = ({ className }: IconProps) => (
   <PiHouse className={cn('h-5 w-5', className)} />
+);
+
+export const TvIcon = ({ className }: IconProps) => (
+  <PiTelevision className={cn('h-5 w-5', className)} />
 );
 
 export const BackIcon = ({ className }: IconProps) => (

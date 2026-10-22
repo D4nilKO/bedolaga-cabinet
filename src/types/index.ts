@@ -107,6 +107,8 @@ export interface Subscription {
   tariff_id?: number;
   tariff_name?: string;
   traffic_reset_mode?: string;
+  /** Старая подписка (куплена в классике, тарифа нет, оператор на тарифах): продления и автоплатежа нет, только переход на тариф. */
+  requires_tariff_selection?: boolean;
 }
 
 // Response wrapper for subscription status endpoint
@@ -132,6 +134,8 @@ export interface SubscriptionListItem {
   is_daily_paused?: boolean;
   autopay_enabled: boolean;
   connected_squads: string[] | null;
+  /** Старая подписка (куплена в классике, тарифа нет, оператор на тарифах): карточка ведёт на выбор тарифа. */
+  requires_tariff_selection?: boolean;
 }
 
 // Response from GET /cabinet/subscriptions (multi-tariff)
@@ -357,6 +361,7 @@ export interface TariffsPurchaseOptions {
   // автооплатой СБП» рядом с покупкой с баланса
   platega_recurrent_enabled?: boolean;
   lava_recurrent_enabled?: boolean;
+  cashera_recurrent_enabled?: boolean;
 }
 
 export interface ClassicPurchaseOptions {
@@ -812,6 +817,15 @@ export interface SbpRecurringInfo {
 export interface LavaRecurringInfo {
   status: string; // 'none' | 'PENDING' | 'ACTIVE' | 'PAST_DUE'
   charge_days?: number;
+  amount_kopeks?: number;
+  next_charge_at?: string | null;
+  redirect_url?: string | null;
+}
+
+export interface CasheraRecurringInfo {
+  status: string; // 'none' | 'PENDING' | 'ACTIVE' | 'PAST_DUE'
+  charge_days?: number;
+  interval?: string; // daily | weekly | monthly | yearly
   amount_kopeks?: number;
   next_charge_at?: string | null;
   redirect_url?: string | null;
