@@ -18,6 +18,7 @@ import { hasLegacySubscription } from '../utils/legacySubscription';
 import TrialOfferCard from '../components/dashboard/TrialOfferCard';
 import ReminderCards from '../components/dashboard/ReminderCards';
 import StatsGrid from '../components/dashboard/StatsGrid';
+import { useTrialActivation } from '../hooks/useTrialActivation';
 import { giftApi } from '../api/gift';
 import { promoApi } from '../api/promo';
 import PendingGiftCard from '../components/dashboard/PendingGiftCard';
@@ -27,7 +28,6 @@ import { API } from '../config/constants';
 import { ChevronRightIcon, StarIcon } from '@/components/icons';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { safeLocal } from '../utils/safeStorage';
-import { getApiErrorMessage } from '../utils/api-error';
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -140,21 +140,7 @@ export default function Dashboard() {
     retry: false,
   });
 
-  const activateTrialMutation = useMutation({
-    mutationFn: () => subscriptionApi.activateTrial(),
-    onSuccess: () => {
-      setTrialError(null);
-      queryClient.invalidateQueries({ queryKey: ['subscription'] });
-      queryClient.invalidateQueries({ queryKey: ['subscriptions-list'] });
-      queryClient.invalidateQueries({ queryKey: ['trial-info'] });
-      queryClient.invalidateQueries({ queryKey: ['balance'] });
-      queryClient.invalidateQueries({ queryKey: ['purchase-options'] });
-      refreshUser();
-    },
-    onError: (error: unknown) => {
-      setTrialError(getApiErrorMessage(error, t('common.error')));
-    },
-  });
+  const activateTrialMutation = useTrialActivation(setTrialError);
 
   // Traffic refresh state and mutation
   const [trafficRefreshCooldown, setTrafficRefreshCooldown] = useState(0);

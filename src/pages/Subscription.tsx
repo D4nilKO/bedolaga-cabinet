@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { subscriptionApi } from '../api/subscription';
+import { androidTvApi } from '../api/androidTv';
 import { WebBackButton } from '../components/WebBackButton';
 import TrafficProgressBar from '../components/dashboard/TrafficProgressBar';
 import { HoverBorderGradient } from '../components/ui/hover-border-gradient';
@@ -271,6 +272,15 @@ export default function Subscription() {
   );
   const shouldHideConnectionLink =
     subscription?.hide_subscription_link || connectionLink?.hide_link;
+  const isDisabledByReview = subscription?.status === 'disabled' && !subscription.is_daily;
+  const { data: androidTvReviewStatus } = useQuery({
+    queryKey: ['android-tv-review-status', subscriptionId],
+    queryFn: () => androidTvApi.getReviewStatus(subscriptionId),
+    enabled: Boolean(isDisabledByReview),
+    retry: false,
+    staleTime: 15_000,
+  });
+  const isReviewPending = androidTvReviewStatus?.review_pending ?? false;
 
   // Traffic zone (theme-aware) — called unconditionally at top level
   const usedPercent = trafficData?.traffic_used_percent ?? subscription?.traffic_used_percent ?? 0;
@@ -517,7 +527,9 @@ export default function Subscription() {
                     : subscription.is_limited
                       ? t('subscription.trafficLimited')
                       : subscription.status === 'disabled'
-                        ? t('subscription.pause.suspended')
+                        ? isDisabledByReview
+                          ? '❌ Подписка временно отключена'
+                          : t('subscription.pause.suspended')
                         : t('subscription.expired')}
                 </span>
               </div>
@@ -549,6 +561,37 @@ export default function Subscription() {
                       <p className="mt-1 text-xs text-dark-400">
                         {t('subscription.trafficLimitedDescription')}
                       </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isDisabledByReview && (
+                <div className="mb-6 rounded-[14px] border border-warning-500/25 bg-warning-500/10 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-warning-500/15 text-warning-400">
+                      <WarningIcon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-warning-300">
+                        {isReviewPending
+                          ? 'Скриншот проходит проверку администратором'
+                          : '❌ Подписка временно отключена'}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-dark-300">
+                        {isReviewPending
+                          ? 'Подписка будет восстановлена, когда проверка завершится.'
+                          : 'Администратор отклонил скриншот отзыва. Чтобы вернуть доступ, загрузите новый скриншот на странице подключения Android TV.'}
+                      </p>
+                      {!isReviewPending && (
+                        <button
+                          type="button"
+                          onClick={() => navigate('/tv')}
+                          className="mt-3 rounded-lg bg-warning-500 px-3 py-2 text-xs font-semibold text-dark-950 transition-colors hover:bg-warning-400"
+                        >
+                          Отправить новый скриншот
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

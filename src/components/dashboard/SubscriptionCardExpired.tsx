@@ -2,10 +2,11 @@ import { uiLocale } from '@/utils/uiLocale';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import type { Subscription } from '../../types';
 import { subscriptionApi } from '../../api/subscription';
+import { androidTvApi } from '../../api/androidTv';
 import { useTheme } from '../../hooks/useTheme';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useHapticFeedback } from '../../platform/hooks/useHaptic';
@@ -47,6 +48,15 @@ export default function SubscriptionCardExpired({
   // Detect daily subscription (disabled or expired)
   const isDaily = subscription.is_daily;
   const isDisabledDaily = subscription.status === 'disabled' && isDaily;
+  const isDisabledByReview = subscription.status === 'disabled' && !isDaily;
+  const { data: reviewStatus } = useQuery({
+    queryKey: ['android-tv-review-status', subscription.id],
+    queryFn: () => androidTvApi.getReviewStatus(subscription.id),
+    enabled: isDisabledByReview,
+    retry: false,
+    staleTime: 15_000,
+  });
+  const isReviewPending = reviewStatus?.review_pending ?? false;
 
   /*
    * Списывать с баланса прямо из карточки можно только там, где выбирать нечего:
@@ -201,11 +211,13 @@ export default function SubscriptionCardExpired({
         <h2 className="text-lg font-bold tracking-tight text-dark-50">
           {isLimited
             ? t('subscription.trafficLimitedTitle')
-            : isDisabledDaily
-              ? t('dashboard.suspended.title')
-              : subscription.is_trial
-                ? t('dashboard.expired.trialTitle')
-                : t('dashboard.expired.title')}
+            : isDisabledByReview
+              ? '❌ Подписка временно отключена'
+              : isDisabledDaily
+                ? t('dashboard.suspended.title')
+                : subscription.is_trial
+                  ? t('dashboard.expired.trialTitle')
+                  : t('dashboard.expired.title')}
         </h2>
       </div>
 
@@ -216,40 +228,67 @@ export default function SubscriptionCardExpired({
         </p>
       )}
 
+      {isDisabledByReview && (
+        <div className="mb-4 rounded-[14px] border border-warning-500/25 bg-warning-500/10 p-4">
+          <p className="text-sm font-semibold text-warning-300">
+            {isReviewPending
+              ? 'Скриншот проходит проверку администратором'
+              : 'Подписка отключена после проверки скриншота'}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-dark-50/60">
+            {isReviewPending
+              ? 'Подписка будет восстановлена, когда проверка завершится.'
+              : 'Загрузите новый скриншот отзыва на странице Android TV, чтобы администратор включил подписку снова.'}
+          </p>
+          {!isReviewPending && (
+            <Link
+              to="/tv"
+              className="mt-3 inline-flex min-h-[40px] items-center justify-center rounded-lg bg-warning-500 px-3 py-2 text-xs font-semibold text-dark-950 transition-colors hover:bg-warning-400"
+            >
+              Отправить новый скриншот
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Expired date + Balance row */}
-      <div
-        // Дата и баланс разведены зазором; не влезли в строку — баланс уходит
-        // ниже. Было «01.09.2026БАЛАНС», а крупная сумма вылезала за плашку.
-        className="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-[14px]"
-        style={{
-          background: `rgba(${accent.r},${accent.g},${accent.b},0.04)`,
-          border: `1px solid rgba(${accent.r},${accent.g},${accent.b},0.08)`,
-          padding: '14px 18px',
-        }}
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="mb-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-dark-400">
-            {isLimited
-              ? t('dashboard.expired.activeUntil')
-              : t('dashboard.expired.expiredDate', {
-                  context: subscription.is_trial ? 'trial' : '',
-                })}
+      {!isDisabledByReview && (
+        <div
+          // Дата и баланс разведены зазором; не влезли в строку — баланс уходит
+          // ниже. Было «01.09.2026БАЛАНС», а крупная сумма вылезала за плашку.
+          className="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-[14px]"
+          style={{
+            background: `rgba(${accent.r},${accent.g},${accent.b},0.04)`,
+            border: `1px solid rgba(${accent.r},${accent.g},${accent.b},0.08)`,
+            padding: '14px 18px',
+          }}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="mb-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-dark-400">
+              {isLimited
+                ? t('dashboard.expired.activeUntil')
+                : t('dashboard.expired.expiredDate', {
+                    context: subscription.is_trial ? 'trial' : '',
+                  })}
+            </div>
+            <div className="text-base font-bold tracking-tight text-dark-50/50">
+              {formattedDate}
+            </div>
           </div>
-          <div className="text-base font-bold tracking-tight text-dark-50/50">{formattedDate}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-dark-400">
+              {t('dashboard.expired.balance')}
+            </span>
+            <span
+              className={`whitespace-nowrap text-sm font-semibold ${hasBalance ? 'text-success-400' : 'text-dark-400'}`}
+            >
+              {formatAmount(balanceRubles)}
+              {'\u00A0'}
+              {currencySymbol}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-dark-400">
-            {t('dashboard.expired.balance')}
-          </span>
-          <span
-            className={`whitespace-nowrap text-sm font-semibold ${hasBalance ? 'text-success-400' : 'text-dark-400'}`}
-          >
-            {formatAmount(balanceRubles)}
-            {'\u00A0'}
-            {currencySymbol}
-          </span>
-        </div>
-      </div>
+      )}
 
       {/* Renew error */}
       {renewError && (
@@ -262,29 +301,29 @@ export default function SubscriptionCardExpired({
       )}
 
       {/* Action buttons */}
-      <div className="flex gap-2.5">
-        {isLimited ? (
-          <Link
-            to={
-              requiresTariff
-                ? tariffSelectionPath(subscription.id)
-                : `/subscriptions/${subscription.id}`
-            }
-            className="flex flex-1 items-center justify-center gap-2 rounded-[14px] py-3.5 text-[15px] font-semibold tracking-tight text-white transition-all duration-300"
-            style={{
-              background: accent.gradient,
-              boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
-            }}
-          >
-            <PlusIcon className="h-4 w-4" />
-            {requiresTariff ? t('subscription.cta.moveToTariff') : t('subscription.buyTraffic')}
-          </Link>
-        ) : (
-          <>
-            {/* Quick Renew or Top Up button (hidden for expired trials) */}
-            {!subscription.is_trial && (
-              <>
-                {!isInstantRenew ? (
+      {!isDisabledByReview && (
+        <div className="flex gap-2.5">
+          {isLimited ? (
+            <Link
+              to={
+                requiresTariff
+                  ? tariffSelectionPath(subscription.id)
+                  : `/subscriptions/${subscription.id}`
+              }
+              className="flex flex-1 items-center justify-center gap-2 rounded-[14px] py-3.5 text-[15px] font-semibold tracking-tight text-white transition-all duration-300"
+              style={{
+                background: accent.gradient,
+                boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
+              }}
+            >
+              <PlusIcon className="h-4 w-4" />
+              {requiresTariff ? t('subscription.cta.moveToTariff') : t('subscription.buyTraffic')}
+            </Link>
+          ) : (
+            <>
+              {/* Quick Renew or Top Up button (hidden for expired trials) */}
+              {!subscription.is_trial &&
+                (!isInstantRenew ? (
                   <Link
                     to={
                       requiresTariff
@@ -341,35 +380,34 @@ export default function SubscriptionCardExpired({
                     <PlusIcon className="h-4 w-4" />
                     {t('dashboard.expired.topUp')}
                   </button>
-                )}
-              </>
-            )}
+                ))}
 
-            {/* Tariffs (go to purchase page) — full-width for trials */}
-            {!requiresTariff && (
-              <Link
-                to="/subscription/purchase"
-                className={`flex items-center justify-center rounded-[14px] px-5 py-3.5 text-[15px] font-semibold tracking-tight transition-colors duration-200 ${
-                  subscription.is_trial ? 'flex-1 text-white' : 'text-dark-50/50'
-                }`}
-                style={
-                  subscription.is_trial
-                    ? {
-                        background: accent.gradient,
-                        boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
-                      }
-                    : {
-                        background: g.innerBg,
-                        border: `1px solid ${g.innerBorder}`,
-                      }
-                }
-              >
-                {t('dashboard.expired.tariffs')}
-              </Link>
-            )}
-          </>
-        )}
-      </div>
+              {/* Tariffs (go to purchase page) — full-width for trials */}
+              {!requiresTariff && (
+                <Link
+                  to="/subscription/purchase"
+                  className={`flex items-center justify-center rounded-[14px] px-5 py-3.5 text-[15px] font-semibold tracking-tight transition-colors duration-200 ${
+                    subscription.is_trial ? 'flex-1 text-white' : 'text-dark-50/50'
+                  }`}
+                  style={
+                    subscription.is_trial
+                      ? {
+                          background: accent.gradient,
+                          boxShadow: `0 4px 20px rgba(${accent.r},${accent.g},${accent.b},0.2)`,
+                        }
+                      : {
+                          background: g.innerBg,
+                          border: `1px solid ${g.innerBorder}`,
+                        }
+                  }
+                >
+                  {t('dashboard.expired.tariffs')}
+                </Link>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

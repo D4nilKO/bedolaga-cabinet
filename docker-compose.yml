@@ -21,6 +21,9 @@ services:
       # Маппинг: <хост-порт>:<контейнер-порт>
       # Внутри контейнера nginx слушает на порту 80
       - '${CABINET_PORT:-3020}:80'
+    networks:
+      - remnawave-network
+      - bot_network
     healthcheck:
       # 127.0.0.1 вместо localhost: localhost может резолвиться в [::1], и на
       # образах, где nginx слушает только IPv4, healthcheck ложно падает
@@ -29,3 +32,12 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
+
+networks:
+  remnawave-network:
+    name: remnawave-network
+    driver: bridge
+    external: true
+  bot_network:
+    name: remnawave-bedolaga-telegram-bot_bot_network
+    external: true

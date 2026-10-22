@@ -37,7 +37,11 @@ const VENDOR_CHUNKS: ReadonlyArray<readonly [string, RegExp]> = [
 export default defineConfig(({ mode }) => {
   // Переменные из .env и из окружения сборки (Docker передаёт их через ENV);
   // окружение сильнее файла — как и у самого Vite.
-  const env = { ...loadEnv(mode, import.meta.dirname, 'VITE_'), ...process.env };
+  const env = { ...loadEnv(mode, import.meta.dirname, ''), ...process.env };
+  const proxyTarget = env.PROXY_TARGET || 'http://localhost:8080';
+  const isRemote = Boolean(env.PROXY_TARGET);
+  const androidTvProxyTarget = env.ANDROID_TV_BOT_API_URL || 'http://localhost:8090';
+
   return {
     plugins: [
       react(),
@@ -62,10 +66,18 @@ export default defineConfig(({ mode }) => {
       host: true,
       proxy: {
         '/api': {
-          target: 'http://localhost:8080',
+          // Set PROXY_TARGET in .env to point at a remote backend for local dev,
+          // e.g. PROXY_TARGET=https://cabinet-9f3k.tagtagcore.com
+          // When PROXY_TARGET is set the /api prefix is kept (remote nginx handles it).
+          // When not set, requests go to local backend on :8080 with /api stripped.
+          target: proxyTarget,
           changeOrigin: true,
-          // Strip /api prefix: /api/cabinet/auth -> /cabinet/auth
-          rewrite: (path) => path.replace(/^\/api/, ''),
+          rewrite: isRemote ? undefined : (path) => path.replace(/^\/api/, ''),
+        },
+        '/android-tv-api': {
+          target: androidTvProxyTarget,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/android-tv-api/, ''),
         },
         // The backend serves its liveness endpoint at the host root (not under
         // /api). Proxy it too so the "service unavailable" detection probe hits the
