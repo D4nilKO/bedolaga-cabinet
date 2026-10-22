@@ -80,6 +80,11 @@ describe('TvConnect registration consent', () => {
 
     const checkboxes = await screen.findAllByRole('checkbox');
     expect(checkboxes).toHaveLength(2);
+    expect(screen.getByLabelText(/Имя.*необязательно/)).toBeTruthy();
+    expect(
+      screen.getByLabelText('Повторите пароль').compareDocumentPosition(checkboxes[0]) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     for (const checkbox of checkboxes) fireEvent.click(checkbox);
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'viewer@example.com' } });

@@ -215,7 +215,9 @@ export default function TvConnect() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === 'register' && (
                 <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-dark-300">Имя</span>
+                  <span className="mb-1.5 block text-sm font-medium text-dark-300">
+                    Имя <span className="font-normal text-dark-500">(необязательно)</span>
+                  </span>
                   <input
                     type="text"
                     value={firstName}
@@ -224,15 +226,6 @@ export default function TvConnect() {
                     className="w-full rounded-xl border border-dark-700 bg-dark-900/60 px-4 py-3 text-dark-100 outline-none transition focus:border-accent-500/60"
                   />
                 </label>
-              )}
-
-              {mode === 'register' && (
-                <LegalConsent
-                  documents={consent.documents}
-                  accepted={consent.accepted}
-                  onChange={consent.toggle}
-                  disabled={loading}
-                />
               )}
 
               <label className="block">
@@ -270,6 +263,15 @@ export default function TvConnect() {
                     className="w-full rounded-xl border border-dark-700 bg-dark-900/60 px-4 py-3 text-dark-100 outline-none transition focus:border-accent-500/60"
                   />
                 </label>
+              )}
+
+              {mode === 'register' && (
+                <LegalConsent
+                  documents={consent.documents}
+                  accepted={consent.accepted}
+                  onChange={consent.toggle}
+                  disabled={loading}
+                />
               )}
 
               {notice && (
